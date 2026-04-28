@@ -1,0 +1,539 @@
+import Phaser from 'phaser';
+import { CFG } from '../config';
+
+// =============================================================
+//  BootScene — gera todas as texturas proceduralmente
+//  Tema dungeon / RPG gótico — sem assets externos
+// =============================================================
+export class BootScene extends Phaser.Scene {
+  constructor() { super({ key: 'Boot' }); }
+
+  create(): void {
+    this.makePlayer();
+    this.makeCommonBat();
+    this.makeFastWraith();
+    this.makeTankGolem();
+    this.makeMinibossNecromancer();
+    this.makeBossDemon();
+    this.makeXPGem();
+    this.makeProjectiles();
+    this.makeStoneTile();
+    this.scene.start('Menu');
+  }
+
+  // ── Utilitário: cria um Graphics fora da cena ─────────────
+  private gfx(w: number, h: number): Phaser.GameObjects.Graphics {
+    return this.make.graphics({ x: 0, y: 0 }, false);
+  }
+
+  // ── Jogador: aventureiro com capa roxa ────────────────────
+  private makePlayer(): void {
+    const g = this.gfx(32, 32);
+
+    // Capa — corpo
+    g.fillStyle(0x4a1f75, 1);
+    g.fillRect(8, 14, 16, 18);
+
+    // Dobras da capa
+    g.fillStyle(0x6a2fa5, 1);
+    g.fillRect(8, 14, 6, 16);
+    g.fillRect(18, 14, 6, 16);
+
+    // Ombros com pauldrons
+    g.fillStyle(0x7b3db5, 1);
+    g.fillRect(4, 12, 7, 6);
+    g.fillRect(21, 12, 7, 6);
+    // Spikes nos ombros
+    g.fillStyle(0xc0a000, 1);
+    g.fillTriangle(5, 12, 8, 12, 6, 8);
+    g.fillTriangle(24, 12, 27, 12, 26, 8);
+
+    // Pescoço
+    g.fillStyle(0xc8956c, 1);
+    g.fillRect(13, 10, 6, 5);
+
+    // Cabeça
+    g.fillStyle(0xc8956c, 1);
+    g.fillCircle(16, 8, 7);
+
+    // Capuz / capote
+    g.fillStyle(0x35145a, 1);
+    g.fillTriangle(9, 11, 23, 11, 16, 1);
+    g.fillRect(9, 6, 14, 6);
+
+    // Olhos brilhantes (ciano)
+    g.fillStyle(0x00e5ff, 1);
+    g.fillRect(11, 7, 3, 2);
+    g.fillRect(18, 7, 3, 2);
+    g.fillStyle(0xffffff, 0.8);
+    g.fillRect(11, 7, 1, 1);
+    g.fillRect(18, 7, 1, 1);
+
+    // Orbe mágico na mão direita
+    g.fillStyle(0x220044, 1);
+    g.fillCircle(25, 22, 5);
+    g.fillStyle(0x9900ff, 0.9);
+    g.fillCircle(25, 22, 3);
+    g.fillStyle(0xffffff, 0.6);
+    g.fillRect(23, 20, 1, 1);
+
+    g.generateTexture('player', 32, 32);
+    g.destroy();
+  }
+
+  // ── COMMON — Morcego (28×28, r=14) ───────────────────────
+  private makeCommonBat(): void {
+    const g = this.gfx(28, 28);
+
+    // Asas (triângulos)
+    g.fillStyle(0x660000, 1);
+    g.fillTriangle(0, 8, 12, 14, 2, 24);
+    g.fillTriangle(0, 8, 10, 2, 12, 14);
+    g.fillTriangle(28, 8, 16, 14, 26, 24);
+    g.fillTriangle(28, 8, 18, 2, 16, 14);
+
+    // Membrana translúcida
+    g.fillStyle(0x990000, 0.55);
+    g.fillTriangle(2, 9, 12, 14, 4, 22);
+    g.fillTriangle(26, 9, 16, 14, 24, 22);
+
+    // Corpo central
+    g.fillStyle(0x3a0000, 1);
+    g.fillCircle(14, 14, 7);
+
+    // Orelhas
+    g.fillStyle(0x550000, 1);
+    g.fillTriangle(8, 9, 11, 3, 13, 9);
+    g.fillTriangle(20, 9, 17, 3, 15, 9);
+
+    // Olhos vermelhos
+    g.fillStyle(0xff2222, 1);
+    g.fillCircle(11, 13, 2);
+    g.fillCircle(17, 13, 2);
+    g.fillStyle(0xff8888, 1);
+    g.fillRect(10, 12, 1, 1);
+    g.fillRect(16, 12, 1, 1);
+
+    // Presas
+    g.fillStyle(0xffffff, 1);
+    g.fillRect(12, 17, 2, 3);
+    g.fillRect(15, 17, 2, 3);
+
+    g.generateTexture('enemy_COMMON', 28, 28);
+    g.destroy();
+  }
+
+  // ── FAST — Espírito (20×20, r=10) ────────────────────────
+  private makeFastWraith(): void {
+    const g = this.gfx(20, 20);
+
+    // Cauda espectral (3 pontas)
+    g.fillStyle(0xd4860a, 0.5);
+    g.fillTriangle(2, 14, 7, 20, 10, 14);
+    g.fillTriangle(8, 14, 13, 20, 16, 14);
+    g.fillTriangle(14, 14, 18, 20, 20, 14);
+
+    // Corpo principal
+    g.fillStyle(0xf39c12, 0.9);
+    g.fillCircle(10, 9, 8);
+
+    // Brilho interno
+    g.fillStyle(0xffd700, 0.5);
+    g.fillCircle(10, 8, 4);
+
+    // Olhos ocos
+    g.fillStyle(0x0a0500, 1);
+    g.fillEllipse(7, 8, 4, 5);
+    g.fillEllipse(13, 8, 4, 5);
+
+    // Brilho nos olhos
+    g.fillStyle(0xff7700, 0.9);
+    g.fillCircle(7, 7, 1);
+    g.fillCircle(13, 7, 1);
+
+    // Boca
+    g.fillStyle(0x0a0500, 1);
+    g.fillRect(6, 13, 8, 2);
+
+    g.generateTexture('enemy_FAST', 20, 20);
+    g.destroy();
+  }
+
+  // ── TANK — Golem (44×44, r=22) ───────────────────────────
+  private makeTankGolem(): void {
+    const g = this.gfx(44, 44);
+
+    // Sombra
+    g.fillStyle(0x000000, 0.35);
+    g.fillEllipse(22, 42, 30, 6);
+
+    // Pernas
+    g.fillStyle(0x3e3355, 1);
+    g.fillRect(9, 30, 9, 12);
+    g.fillRect(26, 30, 9, 12);
+
+    // Corpo
+    g.fillStyle(0x4e4268, 1);
+    g.fillRect(6, 16, 32, 18);
+
+    // Rachaduras de pedra
+    g.lineStyle(1, 0x2a1f40, 0.9);
+    g.lineBetween(6, 22, 38, 22);
+    g.lineBetween(6, 28, 38, 28);
+    g.lineBetween(15, 16, 15, 34);
+    g.lineBetween(29, 16, 29, 34);
+
+    // Braços grandes
+    g.fillStyle(0x3e3355, 1);
+    g.fillRect(0, 17, 8, 15);
+    g.fillRect(36, 17, 8, 15);
+
+    // Punhos
+    g.fillStyle(0x5a4e7a, 1);
+    g.fillRect(-1, 28, 10, 8);
+    g.fillRect(35, 28, 10, 8);
+
+    // Cabeça
+    g.fillStyle(0x5a4e7a, 1);
+    g.fillRect(10, 4, 24, 14);
+
+    // Barra superior da cabeça
+    g.fillStyle(0x3e3355, 1);
+    g.fillRect(10, 4, 24, 3);
+
+    // Olhos com brilho roxo
+    g.fillStyle(0x6a1a9a, 1);
+    g.fillRect(13, 8, 6, 5);
+    g.fillRect(25, 8, 6, 5);
+    g.fillStyle(0xdd44ff, 1);
+    g.fillRect(14, 9, 2, 2);
+    g.fillRect(26, 9, 2, 2);
+
+    // Runa no peito
+    g.lineStyle(1.5, 0x9955cc, 0.8);
+    g.lineBetween(22, 18, 22, 32);
+    g.lineBetween(13, 25, 31, 25);
+
+    g.generateTexture('enemy_TANK', 44, 44);
+    g.destroy();
+  }
+
+  // ── MINIBOSS — Necromante (68×68, r=34) ──────────────────
+  private makeMinibossNecromancer(): void {
+    const g = this.gfx(68, 68);
+
+    // Sombra
+    g.fillStyle(0x000000, 0.4);
+    g.fillEllipse(34, 65, 44, 8);
+
+    // Manto inferior (flare)
+    g.fillStyle(0x0e0022, 1);
+    g.fillTriangle(12, 26, 34, 67, 56, 26);
+
+    // Corpo do manto
+    g.fillStyle(0x1a0033, 1);
+    g.fillRect(18, 24, 32, 40);
+
+    // Detalhes do manto
+    g.fillStyle(0x2a0055, 1);
+    g.fillRect(32, 28, 4, 36);
+    g.lineStyle(1, 0x5500aa, 0.5);
+    g.lineBetween(22, 32, 22, 62);
+    g.lineBetween(46, 32, 46, 62);
+
+    // Tronco
+    g.fillStyle(0x220044, 1);
+    g.fillRect(24, 24, 20, 18);
+
+    // Ombros pontiagudos
+    g.fillStyle(0x330066, 1);
+    g.fillTriangle(8, 20, 22, 24, 16, 34);
+    g.fillTriangle(60, 20, 46, 24, 52, 34);
+
+    // Crânio — cabeça
+    g.fillStyle(0xd4cbb0, 1);
+    g.fillCircle(34, 16, 13);
+
+    // Mandíbula
+    g.fillStyle(0xc4bba0, 1);
+    g.fillRect(26, 22, 16, 7);
+
+    // Órbitas (olhos)
+    g.fillStyle(0x05000f, 1);
+    g.fillCircle(28, 14, 5);
+    g.fillCircle(40, 14, 5);
+
+    // Brilho roxo nos olhos
+    g.fillStyle(0x8800ee, 1);
+    g.fillCircle(28, 14, 3);
+    g.fillCircle(40, 14, 3);
+    g.fillStyle(0xcc55ff, 1);
+    g.fillRect(27, 13, 1, 1);
+    g.fillRect(39, 13, 1, 1);
+
+    // Dentes
+    g.fillStyle(0xeeeeee, 1);
+    for (let i = 0; i < 5; i++) {
+      g.fillRect(27 + i * 3, 26, 2, 4);
+    }
+
+    // Cajado
+    g.fillStyle(0x3a2200, 1);
+    g.fillRect(57, 8, 4, 58);
+    g.fillStyle(0x5a3300, 1);
+    g.fillRect(58, 8, 2, 58);
+
+    // Orbe no cajado
+    g.fillStyle(0x220044, 1);
+    g.fillCircle(59, 7, 8);
+    g.fillStyle(0x8800ee, 0.85);
+    g.fillCircle(59, 7, 5);
+    g.fillStyle(0xcc55ff, 0.6);
+    g.fillRect(56, 5, 2, 2);
+
+    // Runa no peito
+    g.lineStyle(1, 0x9900ff, 0.8);
+    g.lineBetween(34, 26, 34, 40);
+    g.lineBetween(26, 33, 42, 33);
+
+    g.generateTexture('enemy_MINIBOSS', 68, 68);
+    g.destroy();
+  }
+
+  // ── BOSS — Senhor do Vazio (120×120, r=60) ───────────────
+  //  Tema: roxo profundo, runas ciano, olhos dourados, ossos
+  private makeBossDemon(): void {
+    const S = 120;
+    const g = this.gfx(S, S);
+
+    // ── Aura / brilho externo ─────────────────────────────
+    g.fillStyle(0x1a0044, 0.55);
+    g.fillCircle(60, 60, 59);
+
+    // ── Asas enormes ──────────────────────────────────────
+    // Asa esquerda
+    g.fillStyle(0x1e0055, 0.95);
+    g.fillTriangle(0, 30, 32, 56, 6, 96);
+    g.fillTriangle(0, 30, 22, 18, 32, 56);
+    // Membrana esquerda
+    g.fillStyle(0x3300aa, 0.4);
+    g.fillTriangle(4, 34, 30, 56, 8, 88);
+    // Asa direita
+    g.fillStyle(0x1e0055, 0.95);
+    g.fillTriangle(120, 30, 88, 56, 114, 96);
+    g.fillTriangle(120, 30, 98, 18, 88, 56);
+    // Membrana direita
+    g.fillStyle(0x3300aa, 0.4);
+    g.fillTriangle(116, 34, 90, 56, 112, 88);
+
+    // Costelas das asas (ciano brilhante)
+    g.lineStyle(1.5, 0x00ccaa, 0.6);
+    g.lineBetween(8, 34, 28, 56);
+    g.lineBetween(4, 46, 26, 64);
+    g.lineBetween(112, 34, 92, 56);
+    g.lineBetween(116, 46, 94, 64);
+
+    // ── Cauda bifurcada ───────────────────────────────────
+    g.fillStyle(0x2a0066, 1);
+    g.fillTriangle(48, 104, 60, 88, 56, 118);
+    g.fillTriangle(72, 104, 60, 88, 64, 118);
+    g.fillStyle(0x6600cc, 0.7);
+    g.fillTriangle(50, 104, 60, 90, 56, 115);
+
+    // ── Corpo/tronco ──────────────────────────────────────
+    g.fillStyle(0x18003a, 1);
+    g.fillEllipse(60, 72, 58, 64);
+    g.fillStyle(0x220055, 1);
+    g.fillRect(32, 52, 56, 44);
+
+    // Costelas ósseas (branco-acinzentado)
+    g.lineStyle(1.5, 0xccbbee, 0.55);
+    g.lineBetween(34, 60, 86, 60);
+    g.lineBetween(34, 68, 86, 68);
+    g.lineBetween(34, 76, 86, 76);
+    g.lineBetween(34, 84, 86, 84);
+
+    // ── Ombros com espinhos ───────────────────────────────
+    g.fillStyle(0x4400aa, 1);
+    g.fillRect(22, 50, 12, 20);
+    g.fillRect(86, 50, 12, 20);
+    // Espinhos
+    g.fillStyle(0xddccff, 1);
+    g.fillTriangle(22, 50, 28, 50, 25, 40);
+    g.fillTriangle(86, 50, 92, 50, 89, 40);
+    g.fillTriangle(26, 50, 32, 50, 29, 42);
+    g.fillTriangle(88, 50, 94, 50, 91, 42);
+
+    // ── Cabeça — crânio estilizado ────────────────────────
+    g.fillStyle(0x22005a, 1);
+    g.fillCircle(60, 38, 24);
+    // Maxilar
+    g.fillStyle(0x1a0044, 1);
+    g.fillRect(44, 50, 32, 10);
+    // Detalhes crânio
+    g.fillStyle(0x330077, 1);
+    g.fillRect(46, 38, 28, 14);
+
+    // ── Chifres curvos ────────────────────────────────────
+    g.fillStyle(0x0d0022, 1);
+    g.fillTriangle(36, 26, 44, 12, 50, 28);
+    g.fillTriangle(84, 26, 76, 12, 70, 28);
+    // Brilho nos chifres
+    g.fillStyle(0x6600cc, 0.5);
+    g.fillTriangle(38, 26, 44, 14, 48, 28);
+    g.fillTriangle(82, 26, 76, 14, 72, 28);
+
+    // ── Olhos — 3 pares dourados (distinção visual chave) ─
+    // Par superior
+    g.fillStyle(0xffcc00, 1);
+    g.fillEllipse(48, 30, 9, 6);
+    g.fillEllipse(72, 30, 9, 6);
+    g.fillStyle(0xfff0aa, 1);
+    g.fillEllipse(48, 30, 5, 3);
+    g.fillEllipse(72, 30, 5, 3);
+    // Par central
+    g.fillStyle(0xffaa00, 1);
+    g.fillEllipse(44, 40, 7, 5);
+    g.fillEllipse(76, 40, 7, 5);
+    g.fillStyle(0xffe066, 1);
+    g.fillEllipse(44, 40, 4, 3);
+    g.fillEllipse(76, 40, 4, 3);
+    // Par pequeno (testa)
+    g.fillStyle(0xff8800, 0.9);
+    g.fillCircle(55, 22, 3);
+    g.fillCircle(65, 22, 3);
+    g.fillStyle(0xffdd99, 1);
+    g.fillCircle(55, 22, 1);
+    g.fillCircle(65, 22, 1);
+
+    // ── Boca com presas ósseas ────────────────────────────
+    g.fillStyle(0x06000e, 1);
+    g.fillRect(46, 50, 28, 5);
+    g.fillStyle(0xeeddff, 1);
+    g.fillTriangle(46, 50, 50, 50, 48, 57);
+    g.fillTriangle(52, 50, 56, 50, 54, 56);
+    g.fillTriangle(58, 50, 62, 50, 60, 55);
+    g.fillTriangle(64, 50, 68, 50, 66, 57);
+    g.fillTriangle(70, 50, 74, 50, 72, 56);
+
+    // ── Runas ciano no peito ──────────────────────────────
+    g.lineStyle(2.5, 0x00eedd, 0.9);
+    g.lineBetween(60, 56, 60, 82);
+    g.lineBetween(46, 69, 74, 69);
+    g.lineBetween(49, 59, 71, 79);
+    g.lineBetween(71, 59, 49, 79);
+    // Brilho central
+    g.fillStyle(0x00ccff, 0.3);
+    g.fillCircle(60, 69, 10);
+    g.fillStyle(0x6600ff, 0.4);
+    g.fillCircle(60, 69, 5);
+
+    g.generateTexture('enemy_BOSS', S, S);
+    g.destroy();
+  }
+
+  // ── Gema de XP — cristal ciano (16×16) ───────────────────
+  private makeXPGem(): void {
+    const g = this.gfx(16, 16);
+
+    // Sombra
+    g.fillStyle(0x000000, 0.35);
+    g.fillEllipse(8, 15, 10, 4);
+
+    // Corpo do cristal
+    g.fillStyle(0x008fa8, 1);
+    g.fillTriangle(8, 1, 15, 7, 8, 15);
+    g.fillTriangle(8, 1, 1, 7, 8, 15);
+
+    // Faceta brilhante
+    g.fillStyle(0x00d4f5, 0.85);
+    g.fillTriangle(8, 2, 14, 7, 8, 13);
+
+    // Brilho topo
+    g.fillStyle(0xffffff, 0.9);
+    g.fillTriangle(8, 3, 12, 6, 9, 3);
+    g.fillRect(7, 4, 2, 1);
+
+    g.generateTexture('xp_orb', 16, 16);
+    g.destroy();
+  }
+
+  // ── Projéteis ─────────────────────────────────────────────
+  private makeProjectiles(): void {
+    // Orbe mágico — esfera roxa
+    const go = this.gfx(14, 14);
+    go.fillStyle(0x1a0033, 1);
+    go.fillCircle(7, 7, 7);
+    go.fillStyle(0x8800ee, 0.9);
+    go.fillCircle(7, 7, 5);
+    go.fillStyle(0xcc55ff, 0.8);
+    go.fillCircle(7, 7, 3);
+    go.fillStyle(0xffffff, 0.85);
+    go.fillRect(5, 5, 1, 1);
+    go.generateTexture('proj_orb', 14, 14);
+    go.destroy();
+
+    // Flecha — shaft dourado + ponta metálica + penas vermelhas
+    const ga = this.gfx(26, 11);
+    ga.fillStyle(0xc8a000, 1);
+    ga.fillRect(0, 4, 19, 3);
+    ga.fillStyle(0xd4d4d4, 1);
+    ga.fillTriangle(18, 2, 26, 5, 18, 8);
+    ga.fillStyle(0xaa1100, 1);
+    ga.fillTriangle(0, 4, 6, 0, 6, 4);
+    ga.fillStyle(0x881100, 1);
+    ga.fillTriangle(0, 7, 6, 11, 6, 7);
+    ga.generateTexture('proj_arrow', 26, 11);
+    ga.destroy();
+  }
+
+  // ── Chão de masmorra — blocos de pedra (64×64) ───────────
+  private makeStoneTile(): void {
+    const S = 64;
+    const g = this.gfx(S, S);
+
+    // Base
+    g.fillStyle(0x0e0e18, 1);
+    g.fillRect(0, 0, S, S);
+
+    // Blocos de pedra (2×2 por tile)
+    const stones: [number, number, number, number, number][] = [
+      [1, 1, 29, 29, 0x17172a],
+      [34, 1, 29, 29, 0x141424],
+      [1, 34, 29, 29, 0x151528],
+      [34, 34, 29, 29, 0x181830],
+    ];
+
+    stones.forEach(([x, y, w, h, c]) => {
+      g.fillStyle(c, 1);
+      g.fillRect(x, y, w, h);
+
+      // Borda superior/esquerda (realce)
+      g.lineStyle(1, 0x22223a, 0.8);
+      g.lineBetween(x, y, x + w, y);
+      g.lineBetween(x, y, x, y + h);
+
+      // Borda inferior/direita (sombra)
+      g.lineStyle(1, 0x08080e, 0.95);
+      g.lineBetween(x, y + h, x + w, y + h);
+      g.lineBetween(x + w, y, x + w, y + h);
+    });
+
+    // Rachaduras decorativas
+    g.lineStyle(1, 0x08080e, 1);
+    g.lineBetween(4, 6, 10, 13);
+    g.lineBetween(10, 13, 8, 18);
+    g.lineBetween(38, 4, 46, 12);
+    g.lineBetween(5, 38, 9, 50);
+    g.lineBetween(42, 36, 50, 44);
+
+    // Manchas de musgo
+    g.fillStyle(0x0a1a0a, 0.5);
+    g.fillRect(16, 18, 8, 5);
+    g.fillRect(46, 48, 10, 6);
+    g.fillRect(2, 44, 6, 9);
+
+    g.generateTexture('bg_tile', S, S);
+    g.destroy();
+  }
+}
