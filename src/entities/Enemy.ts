@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CFG, EnemyTypeDef } from '../config';
 import { floatingText } from '../utils/floatingText';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  Enemy — RF06 (IA de rastreamento), RF07 (hierarquia),
@@ -25,6 +26,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (!e) return null;
 
     const def = CFG.ENEMY_TYPES[typeName];
+    if (!def) return null;
     e.typeDef  = def;
     e.typeName = typeName;
     e.hp       = def.hp;
@@ -57,6 +59,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     const dmg = Math.ceil(amount * damageMult);
     this.hp  -= dmg;
+    Sfx.enemyHit(this.scene);
 
     // Flash branco (RF15)
     this.setTint(0xffffff);
@@ -71,6 +74,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   private die(): void {
     this.alive = false;
+    Sfx.enemyDie(this.scene);
     this.setVelocity(0, 0).setActive(false).setVisible(false);
     (this.body as Phaser.Physics.Arcade.Body).stop();
     this.scene.events.emit('enemyDied', this.x, this.y, this.typeDef.xp, this.typeName);

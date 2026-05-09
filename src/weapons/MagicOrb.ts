@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Weapon } from './Weapon';
 import type { Player } from '../entities/Player';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  MagicOrb — projéteis em leque ao redor do jogador (RF02, RF12)
@@ -27,6 +28,7 @@ export class MagicOrb extends Weapon {
     projectiles?: Phaser.Physics.Arcade.Group,
   ): void {
     if (!projectiles) return;
+    Sfx.weaponFire(this.scene, this.type);
 
     const { player, numShots, projectileSpeed, projectileLife, damage } = this;
     const mult      = player.stats.damageMult;

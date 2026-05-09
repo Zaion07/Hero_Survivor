@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { CFG, WaveDef } from '../config';
 import { Enemy } from '../entities/Enemy';
 import { CollectionTracker } from '../utils/CollectionTracker';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  SpawnSystem — RF05 (geração fora do viewport)
@@ -18,8 +19,7 @@ export class SpawnSystem {
   private waveIndex  = 0;
   private currentWave!: WaveDef;
 
-  private minibossSpawned: Set<number> = new Set();
-  private bossSpawned:     Set<number> = new Set();
+  private spawnedSpecial: Set<string> = new Set();
 
   constructor(
     scene:  Phaser.Scene,
@@ -70,22 +70,29 @@ export class SpawnSystem {
     CFG.WAVES.forEach((wave, idx) => {
       if (this.elapsed < wave.time) return;
 
-      if (wave.miniboss && !this.minibossSpawned.has(idx)) {
-        this.minibossSpawned.add(idx);
-        const { x, y } = this.randomOutsideViewport();
-        CollectionTracker.addMonster('MINIBOSS');
-        Enemy.spawn(this.scene, this.group, 'MINIBOSS', x, y);
-        this.scene.events.emit('waveMessage', '⚠️ Mini-Boss apareceu!');
-      }
-
-      if (wave.boss && !this.bossSpawned.has(idx)) {
-        this.bossSpawned.add(idx);
-        const { x, y } = this.randomOutsideViewport();
-        CollectionTracker.addMonster('BOSS');
-        Enemy.spawn(this.scene, this.group, 'BOSS', x, y);
-        this.scene.events.emit('waveMessage', '💀 BOSS apareceu!');
-      }
+      wave.minibosses?.forEach(type => this.spawnSpecial(type, idx));
+      wave.bosses?.forEach(type => this.spawnSpecial(type, idx));
     });
+  }
+
+  private spawnSpecial(type: string, waveIndex: number): void {
+    const spawnId = `${waveIndex}:${type}`;
+    if (this.spawnedSpecial.has(spawnId)) return;
+
+    const def = CFG.ENEMY_TYPES[type];
+    if (!def) return;
+
+    this.spawnedSpecial.add(spawnId);
+    const { x, y } = this.randomOutsideViewport();
+    CollectionTracker.addMonster(type);
+    Enemy.spawn(this.scene, this.group, type, x, y);
+    if (def.kind === 'subboss' || def.kind === 'boss') {
+      Sfx.specialSpawn(this.scene, def.kind);
+    }
+
+    const title = def.kind === 'boss' ? 'CHEFÃO' : 'SUBCHEFE';
+    const icon  = def.kind === 'boss' ? '💀' : '⚠️';
+    this.scene.events.emit('waveMessage', `${icon} ${title}: ${def.name}`);
   }
 
   // ── Posição aleatória FORA do campo de visão (RF05) ────────
@@ -123,6 +130,7 @@ export class SpawnSystem {
 
   private weightedRandom(pool: string[]): string {
     const total = pool.reduce((s, t) => s + CFG.ENEMY_TYPES[t].w, 0);
+    if (total <= 0) return pool[pool.length - 1];
     let roll    = Math.random() * total;
     for (const type of pool) {
       roll -= CFG.ENEMY_TYPES[type].w;

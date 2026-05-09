@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CFG } from '../config';
 import type { Weapon } from '../weapons/Weapon';
+import { Sfx } from '../utils/Sfx';
 
 export interface PlayerStats {
   speed:        number;
@@ -90,6 +91,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.stats.hp = Math.max(0, this.stats.hp - amount);
     this.invuln   = true;
+    Sfx.playerHit(this.scene);
 
     // Flash vermelho (RF15)
     this.setTint(0xff2222);
@@ -101,6 +103,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (this.stats.hp <= 0) {
       this.alive = false;
+      Sfx.playerDie(this.scene);
       this.scene.events.emit('playerDied');
     }
   }
@@ -124,6 +127,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.level++;
     const idx     = Math.min(this.level - 2, CFG.XP_TABLE.length - 1);
     this.xpToNext = CFG.XP_TABLE[idx];
+    Sfx.levelUp(this.scene);
     this.scene.events.emit('playerLevelUp', this.level);
   }
 

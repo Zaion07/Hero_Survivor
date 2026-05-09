@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Weapon } from './Weapon';
 import type { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  Arrow — flecha no inimigo mais próximo (RF02, RF12)
@@ -38,6 +39,7 @@ export class Arrow extends Weapon {
 
     const p = projectiles.get(player.x, player.y, 'proj_arrow') as Phaser.Physics.Arcade.Sprite | null;
     if (!p) return;
+    Sfx.weaponFire(this.scene, this.type);
 
     p.setActive(true).setVisible(true).setDepth(7);
     p.setData('damage',   damage * mult);

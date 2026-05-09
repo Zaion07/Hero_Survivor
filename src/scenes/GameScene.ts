@@ -9,6 +9,7 @@ import { Arrow }             from '../weapons/Arrow';
 import { SpawnSystem }       from '../systems/SpawnSystem';
 import { floatingText }      from '../utils/floatingText';
 import { CollectionTracker } from '../utils/CollectionTracker';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  GameScene — loop principal com polish visual estilo VS
@@ -129,6 +130,7 @@ export class GameScene extends Phaser.Scene {
         if (!orb.active) return;
         floatingText(this, orb.x, orb.y - 10, `+${orb.value}`, '#00e5ff', 12);
         this.player.gainXP(orb.value);
+        Sfx.xpPickup(this);
         orb.setActive(false).setVisible(false);
         (orb.body as Phaser.Physics.Arcade.Body).stop();
       },
@@ -209,11 +211,14 @@ export class GameScene extends Phaser.Scene {
   // ── Partículas de morte (tweens) ─────────────────────────
   private spawnDeathParticles(x: number, y: number, type: string): void {
     const def   = CFG.ENEMY_TYPES[type];
+    if (!def) return;
+    const isBoss = def.kind === 'boss';
+    const isSubboss = def.kind === 'subboss';
     const color = Phaser.Display.Color.IntegerToColor(def.color);
-    const count = type === 'BOSS' ? 20 : type === 'MINIBOSS' ? 12 : 6;
+    const count = isBoss ? 20 : isSubboss ? 12 : 6;
 
     for (let i = 0; i < count; i++) {
-      const size  = type === 'BOSS' ? 6 : type === 'MINIBOSS' ? 4 : 3;
+      const size  = isBoss ? 6 : isSubboss ? 4 : 3;
       const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
       const speed = 60 + Math.random() * 100;
       const px    = x + Math.cos(angle) * 8;
@@ -235,7 +240,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Flash de luz na morte de boss/miniboss
-    if (type === 'BOSS' || type === 'MINIBOSS') {
+    if (isBoss || isSubboss) {
       this.cameras.main.flash(300, 80, 0, 0);
       this.cameras.main.shake(400, 0.02);
     }
@@ -259,6 +264,7 @@ export class GameScene extends Phaser.Scene {
   // ── Aplica upgrade (RF11, RF12) ──────────────────────────
   private applyUpgrade(id: string): void {
     this.levelUpPending = false;
+    Sfx.upgradeChoose(this);
 
     switch (id) {
       case 'WEAPON_AURA': {

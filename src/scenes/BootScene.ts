@@ -13,8 +13,11 @@ export class BootScene extends Phaser.Scene {
     this.makeCommonBat();
     this.makeFastWraith();
     this.makeTankGolem();
+    this.makeBruteExecutioner();
     this.makeMinibossNecromancer();
+    this.makeMinibossWarlord();
     this.makeBossDemon();
+    this.makeBossAbyssTitan();
     this.makeXPGem();
     this.makeProjectiles();
     this.makeStoneTile();
@@ -218,6 +221,53 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
+  // ── BRUTE — Carrasco (52×52, r=26) ───────────────────────
+  private makeBruteExecutioner(): void {
+    const g = this.gfx(52, 52);
+
+    // Sombra
+    g.fillStyle(0x000000, 0.35);
+    g.fillEllipse(26, 49, 36, 8);
+
+    // Pernas
+    g.fillStyle(0x2a1010, 1);
+    g.fillRect(14, 34, 9, 16);
+    g.fillRect(29, 34, 9, 16);
+
+    // Peitoral
+    g.fillStyle(0x4a1f1f, 1);
+    g.fillRect(10, 16, 32, 22);
+    g.fillStyle(0x6d2f2f, 1);
+    g.fillRect(10, 16, 32, 4);
+
+    // Ombreiras
+    g.fillStyle(0x3a1414, 1);
+    g.fillRect(6, 16, 8, 10);
+    g.fillRect(38, 16, 8, 10);
+
+    // Cabeça
+    g.fillStyle(0x5a2626, 1);
+    g.fillRect(14, 4, 24, 14);
+    g.fillStyle(0x2a0a0a, 1);
+    g.fillRect(18, 8, 16, 6);
+
+    // Olhos
+    g.fillStyle(0xff5533, 1);
+    g.fillRect(20, 9, 4, 2);
+    g.fillRect(28, 9, 4, 2);
+
+    // Machado
+    g.fillStyle(0x2b1b12, 1);
+    g.fillRect(43, 6, 3, 40);
+    g.fillStyle(0x9b9b9b, 1);
+    g.fillRect(38, 4, 13, 8);
+    g.fillStyle(0xd6d6d6, 1);
+    g.fillTriangle(50, 4, 52, 8, 50, 12);
+
+    g.generateTexture('enemy_BRUTE', 52, 52);
+    g.destroy();
+  }
+
   // ── MINIBOSS — Necromante (68×68, r=34) ──────────────────
   private makeMinibossNecromancer(): void {
     const g = this.gfx(68, 68);
@@ -297,6 +347,57 @@ export class BootScene extends Phaser.Scene {
     g.lineBetween(26, 33, 42, 33);
 
     g.generateTexture('enemy_MINIBOSS', 68, 68);
+    g.destroy();
+  }
+
+  // ── MINIBOSS_WARLORD — Lorde da Guerra (76×76, r=38) ─────
+  private makeMinibossWarlord(): void {
+    const g = this.gfx(76, 76);
+
+    // Sombra
+    g.fillStyle(0x000000, 0.42);
+    g.fillEllipse(38, 72, 48, 10);
+
+    // Capa
+    g.fillStyle(0x180606, 1);
+    g.fillTriangle(14, 30, 38, 74, 62, 30);
+
+    // Corpo
+    g.fillStyle(0x4a1111, 1);
+    g.fillRect(20, 24, 36, 40);
+    g.fillStyle(0x7a2a2a, 1);
+    g.fillRect(20, 24, 36, 5);
+
+    // Braços
+    g.fillStyle(0x3a0e0e, 1);
+    g.fillRect(10, 26, 10, 24);
+    g.fillRect(56, 26, 10, 24);
+
+    // Elmo
+    g.fillStyle(0x2a0808, 1);
+    g.fillRect(23, 8, 30, 18);
+    g.fillStyle(0x7a1f1f, 1);
+    g.fillRect(23, 8, 30, 4);
+
+    // Chifres
+    g.fillStyle(0xbca080, 1);
+    g.fillTriangle(23, 12, 16, 4, 27, 14);
+    g.fillTriangle(53, 12, 60, 4, 49, 14);
+
+    // Olhos
+    g.fillStyle(0xffaa44, 1);
+    g.fillRect(29, 14, 5, 3);
+    g.fillRect(42, 14, 5, 3);
+
+    // Espadão
+    g.fillStyle(0x4a4a4a, 1);
+    g.fillRect(66, 10, 4, 50);
+    g.fillStyle(0xd6d6d6, 1);
+    g.fillTriangle(66, 8, 70, 8, 68, 2);
+    g.fillStyle(0x2b1b12, 1);
+    g.fillRect(65, 58, 6, 6);
+
+    g.generateTexture('enemy_MINIBOSS_WARLORD', 76, 76);
     g.destroy();
   }
 
@@ -429,6 +530,61 @@ export class BootScene extends Phaser.Scene {
     g.fillCircle(60, 69, 5);
 
     g.generateTexture('enemy_BOSS', S, S);
+    g.destroy();
+  }
+
+  // ── BOSS_ABYSS — Titã Abissal (136×136, r=68) ─────────────
+  private makeBossAbyssTitan(): void {
+    const S = 136;
+    const g = this.gfx(S, S);
+
+    // Aura externa
+    g.fillStyle(0x090012, 0.6);
+    g.fillCircle(68, 68, 66);
+
+    // Corpo central
+    g.fillStyle(0x1a0830, 1);
+    g.fillEllipse(68, 74, 72, 84);
+    g.fillStyle(0x2f0f57, 1);
+    g.fillRect(36, 50, 64, 48);
+
+    // Cabeça
+    g.fillStyle(0x1e0a3a, 1);
+    g.fillCircle(68, 38, 26);
+    g.fillStyle(0x3f1670, 1);
+    g.fillRect(48, 32, 40, 14);
+
+    // Olhos
+    g.fillStyle(0x55e6ff, 1);
+    g.fillEllipse(58, 36, 12, 7);
+    g.fillEllipse(78, 36, 12, 7);
+    g.fillStyle(0xd5ffff, 1);
+    g.fillCircle(58, 36, 2);
+    g.fillCircle(78, 36, 2);
+
+    // Braços tentaculares
+    g.fillStyle(0x241046, 1);
+    g.fillTriangle(20, 66, 40, 80, 16, 112);
+    g.fillTriangle(116, 66, 96, 80, 120, 112);
+    g.fillStyle(0x3a1e6b, 0.8);
+    g.fillTriangle(24, 70, 38, 82, 22, 106);
+    g.fillTriangle(112, 70, 98, 82, 114, 106);
+
+    // Runas no peito
+    g.lineStyle(2, 0x33d5ff, 0.9);
+    g.lineBetween(68, 58, 68, 92);
+    g.lineBetween(50, 75, 86, 75);
+    g.lineBetween(54, 63, 82, 87);
+    g.lineBetween(82, 63, 54, 87);
+
+    // Dentes
+    g.fillStyle(0xe8dcff, 1);
+    g.fillTriangle(52, 48, 56, 48, 54, 56);
+    g.fillTriangle(60, 48, 64, 48, 62, 57);
+    g.fillTriangle(68, 48, 72, 48, 70, 56);
+    g.fillTriangle(76, 48, 80, 48, 78, 57);
+
+    g.generateTexture('enemy_BOSS_ABYSS', S, S);
     g.destroy();
   }
 

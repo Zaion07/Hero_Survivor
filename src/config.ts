@@ -3,6 +3,8 @@
 // =============================================================
 
 export interface EnemyTypeDef {
+  name: string;
+  kind: 'normal' | 'subboss' | 'boss';
   hp: number;
   speed: number;
   dmg: number;
@@ -16,8 +18,8 @@ export interface WaveDef {
   time: number;       // segundos de jogo para ativar
   interval: number;   // ms entre spawns
   pool: string[];     // tipos disponíveis nessa onda
-  miniboss: boolean;
-  boss: boolean;
+  minibosses?: string[];
+  bosses?: string[];
 }
 
 export interface UpgradeDef {
@@ -49,21 +51,59 @@ export const CFG = {
 
   // ── Tipos de inimigos (RF07) ──────────────────────────────
   ENEMY_TYPES: {
-    COMMON:   { hp:   30, speed:  75, dmg:  8, xp:   3, color: 0xe74c3c, r: 14, w: 10 },
-    FAST:     { hp:   15, speed: 160, dmg:  5, xp:   2, color: 0xf39c12, r: 10, w:  6 },
-    TANK:     { hp:  100, speed:  45, dmg: 20, xp:  10, color: 0x8e44ad, r: 22, w:  3 },
-    MINIBOSS: { hp:  400, speed:  55, dmg: 30, xp:  60, color: 0x9b59b6, r: 34, w:  0 },
-    BOSS:     { hp: 1500, speed:  40, dmg: 50, xp: 250, color: 0x6600cc, r: 60, w:  0 },
+    COMMON: {
+      name: 'Morcego',
+      kind: 'normal',
+      hp: 30, speed: 75, dmg: 8, xp: 3, color: 0xe74c3c, r: 14, w: 10,
+    },
+    FAST: {
+      name: 'Espírito',
+      kind: 'normal',
+      hp: 15, speed: 160, dmg: 5, xp: 2, color: 0xf39c12, r: 10, w: 6,
+    },
+    TANK: {
+      name: 'Golem',
+      kind: 'normal',
+      hp: 100, speed: 45, dmg: 20, xp: 10, color: 0x8e44ad, r: 22, w: 3,
+    },
+    BRUTE: {
+      name: 'Carrasco',
+      kind: 'normal',
+      hp: 180, speed: 62, dmg: 26, xp: 18, color: 0x6d2f2f, r: 26, w: 2,
+    },
+    MINIBOSS: {
+      name: 'Necromante',
+      kind: 'subboss',
+      hp: 500, speed: 55, dmg: 30, xp: 70, color: 0x9b59b6, r: 34, w: 0,
+    },
+    MINIBOSS_WARLORD: {
+      name: 'Lorde da Guerra',
+      kind: 'subboss',
+      hp: 740, speed: 50, dmg: 38, xp: 105, color: 0xb03a2e, r: 38, w: 0,
+    },
+    BOSS: {
+      name: 'Sr. do Vazio',
+      kind: 'boss',
+      hp: 1800, speed: 40, dmg: 52, xp: 280, color: 0x6600cc, r: 60, w: 0,
+    },
+    BOSS_ABYSS: {
+      name: 'Titã Abissal',
+      kind: 'boss',
+      hp: 2500, speed: 36, dmg: 64, xp: 420, color: 0x2f0f57, r: 68, w: 0,
+    },
   } as Record<string, EnemyTypeDef>,
 
   // ── Ondas de dificuldade (RF08) ───────────────────────────
   WAVES: [
-    { time:   0, interval: 1400, pool: ['COMMON'],                    miniboss: false, boss: false },
-    { time:  30, interval: 1100, pool: ['COMMON', 'FAST'],            miniboss: false, boss: false },
-    { time:  60, interval:  900, pool: ['COMMON', 'FAST', 'TANK'],    miniboss: false, boss: false },
-    { time: 120, interval:  700, pool: ['COMMON', 'FAST', 'TANK'],    miniboss: true,  boss: false },
-    { time: 180, interval:  600, pool: ['COMMON', 'FAST', 'TANK'],    miniboss: false, boss: false },
-    { time: 300, interval:  500, pool: ['COMMON', 'FAST', 'TANK'],    miniboss: false, boss: true  },
+    { time: 0, interval: 1400, pool: ['COMMON'] },
+    { time: 30, interval: 1150, pool: ['COMMON', 'FAST'] },
+    { time: 60, interval: 950, pool: ['COMMON', 'FAST', 'TANK'] },
+    { time: 90, interval: 820, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'] },
+    { time: 120, interval: 740, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], minibosses: ['MINIBOSS'] },
+    { time: 180, interval: 660, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], minibosses: ['MINIBOSS_WARLORD'] },
+    { time: 240, interval: 580, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], minibosses: ['MINIBOSS'] },
+    { time: 300, interval: 520, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], bosses: ['BOSS'] },
+    { time: 420, interval: 470, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], bosses: ['BOSS_ABYSS'] },
   ] as WaveDef[],
 
   SPAWN_MARGIN: 160, // px além da viewport onde inimigos aparecem (RF05)

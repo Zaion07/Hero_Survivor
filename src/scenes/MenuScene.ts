@@ -1,18 +1,18 @@
 import Phaser from 'phaser';
 import { CFG } from '../config';
 import { CollectionTracker } from '../utils/CollectionTracker';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  MenuScene — Tela inicial com bestiário e arsenal
 // =============================================================
 
-const MONSTERS = [
-  { key: 'enemy_COMMON',   name: 'Morcego',    type: 'COMMON',   size: 28 },
-  { key: 'enemy_FAST',     name: 'Espírito',   type: 'FAST',     size: 20 },
-  { key: 'enemy_TANK',     name: 'Golem',      type: 'TANK',     size: 44 },
-  { key: 'enemy_MINIBOSS', name: 'Necromante', type: 'MINIBOSS', size: 68 },
-  { key: 'enemy_BOSS',     name: 'Sr. do Vazio', type: 'BOSS',   size: 120 },
-];
+const MONSTERS = Object.entries(CFG.ENEMY_TYPES).map(([type, def]) => ({
+  key: `enemy_${type}`,
+  name: def.name,
+  type,
+  size: def.r * 2,
+}));
 
 type ArsenalItem = { id: string; icon: string; name: string; kind: 'weapon' | 'upgrade' };
 
@@ -94,7 +94,7 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
-  // ── Bestiário: 5 monstros em linha ───────────────────────
+  // ── Bestiário ─────────────────────────────────────────────
   private buildBestiary(W: number): void {
     this.add.text(W / 2, 112, '✦  BESTIÁRIO  ✦', {
       fontSize: '14px', color: '#9070b0',
@@ -102,7 +102,7 @@ export class MenuScene extends Phaser.Scene {
       stroke: '#000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(10);
 
-    const cardW = 110, cardH = 148, gap = 14;
+    const cardW = 100, cardH = 148, gap = 8;
     const totalW = MONSTERS.length * cardW + (MONSTERS.length - 1) * gap;
     const startX = (W - totalW) / 2;
     const startY = 128;
@@ -304,6 +304,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startGame(): void {
+    Sfx.unlock(this);
     this.cameras.main.flash(250, 212, 175, 55);
     this.time.delayedCall(180, () => this.scene.start('Game'));
   }

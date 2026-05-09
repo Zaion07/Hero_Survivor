@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Weapon } from './Weapon';
 import type { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  Aura — dano de área contínuo ao redor do jogador (RF02, RF12)
@@ -42,6 +43,7 @@ export class Aura extends Weapon {
   protected fire(enemies: Phaser.Physics.Arcade.Group): void {
     const { player, radius, damage } = this;
     const mult = player.stats.damageMult;
+    Sfx.weaponFire(this.scene, this.type);
 
     this.firing = true;
     this.scene.time.delayedCall(200, () => { this.firing = false; });
