@@ -13,6 +13,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   hp!:       number;
   maxHp!:    number;
   alive      = true;
+  private hitBlinkTween?: Phaser.Tweens.Tween;
 
   // ── Factory: pega do pool e configura (RF05) ───────────────
   static spawn(
@@ -33,7 +34,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     e.maxHp    = def.hp;
     e.alive    = true;
 
-    e.setActive(true).setVisible(true).setDepth(5).clearTint();
+    e.hitBlinkTween?.stop();
+    e.hitBlinkTween = undefined;
+    e.setActive(true).setVisible(true).setDepth(5).setAlpha(1).clearTint();
 
     const body   = e.body as Phaser.Physics.Arcade.Body;
     const offset = def.r;
@@ -61,9 +64,20 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.hp  -= dmg;
     Sfx.enemyHit(this.scene);
 
-    // Flash branco (RF15)
-    this.setTint(0xffffff);
-    this.scene.time.delayedCall(100, () => { if (this.alive) this.clearTint(); });
+    // Piscar rápido ao receber hit (RF15)
+    this.hitBlinkTween?.stop();
+    this.setAlpha(1).setTint(0xffffff);
+    this.hitBlinkTween = this.scene.tweens.add({
+      targets: this,
+      alpha: 0.3,
+      duration: 40,
+      repeat: 2,
+      yoyo: true,
+      onComplete: () => {
+        this.setAlpha(1);
+        if (this.alive) this.clearTint();
+      },
+    });
 
     // Número flutuante de dano (RF15)
     floatingText(this.scene, this.x, this.y - this.displayHeight / 2, `-${dmg}`);
@@ -74,6 +88,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   private die(): void {
     this.alive = false;
+    this.hitBlinkTween?.stop();
+    this.hitBlinkTween = undefined;
     Sfx.enemyDie(this.scene);
     this.setVelocity(0, 0).setActive(false).setVisible(false);
     (this.body as Phaser.Physics.Arcade.Body).stop();

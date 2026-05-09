@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CFG } from '../config';
+import { Sfx } from '../utils/Sfx';
 
 // =============================================================
 //  HUDScene — interface estilo Vampire Survivors / RPG gótico
@@ -24,6 +25,7 @@ export class HUDScene extends Phaser.Scene {
 
     const W = CFG.WIDTH;
     const H = CFG.HEIGHT;
+    const game = this.scene.get('Game');
 
     // ── Painel superior escuro ────────────────────────────
     const topPanel = this.add.graphics();
@@ -95,6 +97,7 @@ export class HUDScene extends Phaser.Scene {
       fontFamily: 'Cinzel, Georgia, serif',
       stroke: '#000', strokeThickness: 3,
     }).setOrigin(1, 0);
+    this.buildMusicToggleBtn(W, game);
 
     // ── Barra de XP na base da tela (RF09) ───────────────
     const XP_H = 8;
@@ -133,7 +136,6 @@ export class HUDScene extends Phaser.Scene {
     });
 
     // ── Ouve eventos da GameScene ─────────────────────────
-    const game = this.scene.get('Game');
     game.events.on('playerHpChanged', (hp: number, max: number) =>
       this.drawHpFill(hp, max, HP_X, HP_Y, HP_W, HP_H),
     );
@@ -149,6 +151,42 @@ export class HUDScene extends Phaser.Scene {
     game.events.on('enemyKilled',   ()           => {
       this.kills++;
       this.killText.setText(`☠ ${this.kills}`);
+    });
+  }
+
+  private buildMusicToggleBtn(W: number, game: Phaser.Scene): void {
+    const btnW = 90;
+    const btnH = 18;
+    const x = W - 12 - btnW / 2;
+    const y = 32;
+    const bg = this.add.graphics().setDepth(20);
+    const txt = this.add.text(x, y, '', {
+      fontSize: '10px',
+      color: '#f2f2f2',
+      fontFamily: 'Cinzel, Georgia, serif',
+      stroke: '#000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(21);
+
+    const paint = (enabled: boolean) => {
+      bg.clear();
+      bg.fillStyle(enabled ? 0x103320 : 0x3a1111, 0.95);
+      bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 5);
+      bg.lineStyle(1, enabled ? 0x44cc88 : 0xcc5555, 0.95);
+      bg.strokeRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 5);
+      txt.setText(enabled ? '♪ MÚSICA: ON' : '♪ MÚSICA: OFF');
+    };
+
+    paint(Sfx.isDungeonBgmEnabled());
+
+    const hitbox = this.add.rectangle(x, y, btnW, btnH, 0xffffff, 0)
+      .setDepth(22)
+      .setInteractive({ useHandCursor: true });
+    hitbox.on('pointerover', () => txt.setAlpha(0.85));
+    hitbox.on('pointerout', () => txt.setAlpha(1));
+    hitbox.on('pointerdown', () => {
+      const enabled = Sfx.toggleDungeonBgm(game);
+      paint(enabled);
     });
   }
 

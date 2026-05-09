@@ -22,6 +22,15 @@ export interface WaveDef {
   bosses?: string[];
 }
 
+export interface HordeDef {
+  start: number;      // segundo de início da horda
+  duration: number;   // duração da horda em segundos
+  interval: number;   // ms entre rajadas da horda
+  count: number;      // quantidade por rajada
+  pool: string[];     // tipos possíveis na horda
+  label: string;      // texto exibido no HUD
+}
+
 export interface UpgradeDef {
   id: string;
   label: string;
@@ -105,6 +114,16 @@ export const CFG = {
     { time: 300, interval: 520, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], bosses: ['BOSS'] },
     { time: 420, interval: 470, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], bosses: ['BOSS_ABYSS'] },
   ] as WaveDef[],
+
+  // ── Hordas temporizadas (picos de pressão) ──────────────────
+  HORDES: [
+    { start: 45,  duration: 10, interval: 500, count: 2, pool: ['FAST'], label: 'Enxame Fantasma' },
+    { start: 105, duration: 12, interval: 430, count: 3, pool: ['COMMON', 'FAST'], label: 'Maré Sangrenta' },
+    { start: 165, duration: 10, interval: 520, count: 2, pool: ['TANK'], label: 'Marcha dos Golems' },
+    { start: 225, duration: 14, interval: 420, count: 3, pool: ['FAST', 'TANK', 'BRUTE'], label: 'Ruptura Abissal' },
+    { start: 285, duration: 16, interval: 360, count: 4, pool: ['COMMON', 'FAST', 'BRUTE'], label: 'Tormenta Infernal' },
+    { start: 360, duration: 18, interval: 320, count: 4, pool: ['FAST', 'TANK', 'BRUTE'], label: 'Noite Sem Fim' },
+  ] as HordeDef[],
 
   SPAWN_MARGIN: 160, // px além da viewport onde inimigos aparecem (RF05)
 

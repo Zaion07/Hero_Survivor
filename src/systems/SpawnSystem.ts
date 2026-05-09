@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CFG, WaveDef } from '../config';
+import { CFG, HordeDef, WaveDef } from '../config';
 import { Enemy } from '../entities/Enemy';
 import { CollectionTracker } from '../utils/CollectionTracker';
 import { Sfx } from '../utils/Sfx';
@@ -16,8 +16,12 @@ export class SpawnSystem {
 
   private elapsed    = 0;
   private spawnTimer = 0;
-  private waveIndex  = 0;
+  private waveIndex  = -1;
   private currentWave!: WaveDef;
+  private hordeIndex = 0;
+  private activeHorde: HordeDef | null = null;
+  private hordeEndAt = 0;
+  private hordeSpawnTimer = 0;
 
   private spawnedSpecial: Set<string> = new Set();
 
@@ -36,6 +40,7 @@ export class SpawnSystem {
     this.elapsed += delta / 1000;
 
     this.advanceWave();
+    this.updateHorde(delta);
 
     this.spawnTimer -= delta;
     if (this.spawnTimer <= 0) {
@@ -53,14 +58,56 @@ export class SpawnSystem {
           this.waveIndex   = i;
           this.currentWave = CFG.WAVES[i];
           this.spawnTimer  = 0;
+          this.scene.events.emit('waveMessage', `🌊 ONDA ${i + 1}`);
         }
         break;
       }
     }
   }
 
+  private updateHorde(delta: number): void {
+    while (this.activeHorde === null && this.hordeIndex < CFG.HORDES.length) {
+      const horde = CFG.HORDES[this.hordeIndex];
+      if (this.elapsed < horde.start) break;
+
+      this.hordeIndex++;
+      const scheduledEnd = horde.start + horde.duration;
+      if (this.elapsed >= scheduledEnd) continue;
+
+      this.activeHorde = horde;
+      this.hordeEndAt = scheduledEnd;
+      this.hordeSpawnTimer = 0;
+      this.scene.events.emit('waveMessage', `🔥 HORDA: ${horde.label}`);
+    }
+
+    if (!this.activeHorde) return;
+
+    if (this.elapsed >= this.hordeEndAt) {
+      this.activeHorde = null;
+      this.hordeSpawnTimer = 0;
+      return;
+    }
+
+    this.hordeSpawnTimer -= delta;
+    while (this.hordeSpawnTimer <= 0 && this.activeHorde) {
+      this.spawnHordeBatch(this.activeHorde);
+      this.hordeSpawnTimer += this.activeHorde.interval;
+    }
+  }
+
   private spawnRegular(): void {
     const type      = this.weightedRandom(this.currentWave.pool);
+    this.spawnEnemy(type);
+  }
+
+  private spawnHordeBatch(horde: HordeDef): void {
+    for (let i = 0; i < horde.count; i++) {
+      const type = this.weightedRandom(horde.pool);
+      this.spawnEnemy(type);
+    }
+  }
+
+  private spawnEnemy(type: string): void {
     const { x, y } = this.randomOutsideViewport();
     CollectionTracker.addMonster(type);
     Enemy.spawn(this.scene, this.group, type, x, y);

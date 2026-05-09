@@ -4,6 +4,11 @@ type Waveform = OscillatorType;
 
 export class Sfx {
   private static throttle = new Map<string, number>();
+  private static dungeonBgmEnabled = true;
+  private static readonly BGM_VOLUME = 0.55;
+  private static bgm:
+    | { ownerKey: string; timer: Phaser.Time.TimerEvent; step: number }
+    | null = null;
 
   static unlock(scene: Phaser.Scene): void {
     const ctx = this.getContext(scene);
@@ -65,6 +70,52 @@ export class Sfx {
     this.sweep(scene, { from: 180, to: 240, duration: 0.09, volume: 0.03, wave: 'triangle' });
   }
 
+  static startDungeonBgm(scene: Phaser.Scene): void {
+    if (!this.dungeonBgmEnabled) return;
+    const ownerKey = scene.sys.settings.key;
+    if (this.bgm && this.bgm.ownerKey === ownerKey) return;
+
+    this.stopDungeonBgm();
+
+    const state = {
+      ownerKey,
+      step: 0,
+      timer: scene.time.addEvent({
+        delay: 260,
+        loop: true,
+        callback: () => this.tickDungeonBgm(scene),
+      }),
+    };
+    this.bgm = state;
+
+    this.tickDungeonBgm(scene);
+
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.stopDungeonBgm(ownerKey));
+    scene.events.once(Phaser.Scenes.Events.DESTROY, () => this.stopDungeonBgm(ownerKey));
+  }
+
+  static stopDungeonBgm(ownerKey?: string): void {
+    if (!this.bgm) return;
+    if (ownerKey && this.bgm.ownerKey !== ownerKey) return;
+    this.bgm.timer.remove(false);
+    this.bgm = null;
+  }
+
+  static isDungeonBgmEnabled(): boolean {
+    return this.dungeonBgmEnabled;
+  }
+
+  static toggleDungeonBgm(scene: Phaser.Scene): boolean {
+    this.dungeonBgmEnabled = !this.dungeonBgmEnabled;
+    if (this.dungeonBgmEnabled) {
+      this.unlock(scene);
+      this.startDungeonBgm(scene);
+    } else {
+      this.stopDungeonBgm();
+    }
+    return this.dungeonBgmEnabled;
+  }
+
   private static sweep(
     scene: Phaser.Scene,
     opts: { from: number; to: number; duration: number; volume: number; wave: Waveform; delay?: number },
@@ -88,6 +139,59 @@ export class Sfx {
     gain.connect(ctx.destination);
     osc.start(now);
     osc.stop(now + opts.duration + 0.01);
+  }
+
+  private static tickDungeonBgm(scene: Phaser.Scene): void {
+    const ctx = this.getContext(scene);
+    if (!ctx || ctx.state !== 'running' || !this.bgm) return;
+
+    const progression = [45, 41, 38, 43];
+    const leadPattern = [12, 15, 19, 22, 24, 22, 19, 15];
+    const step = this.bgm.step;
+    const root = progression[Math.floor(step / 8) % progression.length];
+    const lead = root + leadPattern[step % leadPattern.length];
+
+    this.note(ctx, this.midiToHz(lead), 0.16 * this.BGM_VOLUME, 0.02, 'triangle', 0);
+
+    if (step % 2 === 0) {
+      this.note(ctx, this.midiToHz(root), 0.12 * this.BGM_VOLUME, 0.22, 'sawtooth', 0);
+    }
+
+    if (step % 4 === 0) {
+      this.note(ctx, this.midiToHz(root + 7), 0.04 * this.BGM_VOLUME, 0.68, 'sine', 0);
+      this.note(ctx, this.midiToHz(root + 12), 0.03 * this.BGM_VOLUME, 0.68, 'sine', 0.04);
+    }
+
+    this.bgm.step++;
+  }
+
+  private static note(
+    ctx: AudioContext,
+    frequency: number,
+    volume: number,
+    duration: number,
+    wave: Waveform,
+    delay: number,
+  ): void {
+    const now = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = wave;
+    osc.frequency.setValueAtTime(frequency, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }
+
+  private static midiToHz(midi: number): number {
+    return 440 * Math.pow(2, (midi - 69) / 12);
   }
 
   private static allow(scene: Phaser.Scene, key: string, cooldownMs: number): boolean {

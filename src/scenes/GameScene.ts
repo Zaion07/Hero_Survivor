@@ -33,6 +33,8 @@ export class GameScene extends Phaser.Scene {
     // ── Resetar estado (garante reinício limpo) ───────────
     this.gameOver       = false;
     this.levelUpPending = false;
+    Sfx.unlock(this);
+    Sfx.startDungeonBgm(this);
 
     const W = CFG.WORLD;
 
