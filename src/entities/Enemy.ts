@@ -25,11 +25,28 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     x: number,
     y: number,
   ): Enemy | null {
-    const e = group.get(x, y, `enemy_${typeName}`) as Enemy | null;
+    const def = CFG.ENEMY_TYPES[typeName];
+    if (!def) {
+      console.error(`[Enemy.ts] Tipo de inimigo não encontrado no CFG: ${typeName}`);
+      return null;
+    }
+
+    // 1. Tenta pegar o primeiro inimigo inativo (morto) INDEPENDENTE da textura dele
+    let e = group.getFirstDead(false) as Enemy | null;
+
+    // 2. Se não achou nenhum inativo, e o grupo ainda permite crescer, cria um novo
+    if (!e && (!group.maxSize || group.getLength() < group.maxSize)) {
+      e = group.create(x, y) as Enemy;
+    }
+
+    // 3. Se ainda assim for null, significa que o grupo atingiu o limite máximo de entidades
     if (!e) return null;
 
-    const def = CFG.ENEMY_TYPES[typeName];
-    if (!def) return null;
+    // 4. FORÇA a troca da textura e atualiza as dimensões (CRUCIAL para Bosses nascerem no lugar de minions)
+    e.setTexture(`enemy_${typeName}`);
+    e.updateDisplayOrigin();
+
+    // 5. Configura os status base
     e.typeDef  = def;
     e.typeName = typeName;
     e.hp       = def.hp;
@@ -38,10 +55,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     e.bornAt   = scene.time.now;
     e.strafeSign = Math.random() < 0.5 ? -1 : 1;
 
+    // 6. Reseta efeitos visuais de vidas passadas
     e.hitBlinkTween?.stop();
     e.hitBlinkTween = undefined;
     e.setActive(true).setVisible(true).setDepth(5).setAlpha(1).clearTint();
 
+    // 7. Configura a colisão com base nas dimensões da nova textura
     const body   = e.body as Phaser.Physics.Arcade.Body;
     const offset = def.r;
     body.setCircle(offset, e.width / 2 - offset, e.height / 2 - offset);
@@ -53,11 +72,17 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   // ── IA de perseguição (RF06) ──────────────────────────────
   chase(px: number, py: number): void {
     if (!this.alive || !this.active) return;
+    
     const angle = Phaser.Math.Angle.Between(this.x, this.y, px, py);
+    
+    // Otimização: Cache da trigonometria para poupar processamento em hordas
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+
     if (this.typeDef.kind === 'normal') {
       this.setVelocity(
-        Math.cos(angle) * this.typeDef.speed,
-        Math.sin(angle) * this.typeDef.speed,
+        cosA * this.typeDef.speed,
+        sinA * this.typeDef.speed,
       );
       return;
     }
@@ -76,8 +101,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     let forward = this.typeDef.speed * rageBoost * dashBoost;
     if (dist < (isBoss ? 155 : 120) && !dashWindow) forward *= 0.82;
 
-    const vx = Math.cos(angle) * forward - Math.sin(angle) * (forward * strafe);
-    const vy = Math.sin(angle) * forward + Math.cos(angle) * (forward * strafe);
+    const vx = cosA * forward - sinA * (forward * strafe);
+    const vy = sinA * forward + cosA * (forward * strafe);
     this.setVelocity(vx, vy);
   }
 
