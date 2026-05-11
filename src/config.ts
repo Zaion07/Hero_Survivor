@@ -104,15 +104,13 @@ export const CFG = {
 
   // ── Ondas de dificuldade (RF08) ───────────────────────────
   WAVES: [
-    { time: 0, interval: 1400, pool: ['COMMON'] },
-    { time: 30, interval: 1150, pool: ['COMMON', 'FAST'] },
-    { time: 60, interval: 950, pool: ['COMMON', 'FAST', 'TANK'] },
-    { time: 90, interval: 820, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'] },
-    { time: 120, interval: 740, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], minibosses: ['MINIBOSS'] },
-    { time: 180, interval: 660, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], minibosses: ['MINIBOSS_WARLORD'] },
-    { time: 240, interval: 580, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], minibosses: ['MINIBOSS'] },
-    { time: 300, interval: 520, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], bosses: ['BOSS'] },
-    { time: 420, interval: 470, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'], bosses: ['BOSS_ABYSS'] },
+    { time: 0, interval: 1350, pool: ['COMMON', 'FAST'] },
+    { time: 60, interval: 980, pool: ['COMMON', 'FAST', 'TANK'] },
+    { time: 120, interval: 820, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'] },
+    { time: 180, interval: 720, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'] },
+    { time: 240, interval: 640, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'] },
+    { time: 300, interval: 560, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'] },
+    { time: 420, interval: 500, pool: ['COMMON', 'FAST', 'TANK', 'BRUTE'] },
   ] as WaveDef[],
 
   // ── Hordas temporizadas (picos de pressão) ──────────────────

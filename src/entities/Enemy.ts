@@ -13,6 +13,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   hp!:       number;
   maxHp!:    number;
   alive      = true;
+  private bornAt = 0;
+  private strafeSign = 1;
   private hitBlinkTween?: Phaser.Tweens.Tween;
 
   // ── Factory: pega do pool e configura (RF05) ───────────────
@@ -33,6 +35,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     e.hp       = def.hp;
     e.maxHp    = def.hp;
     e.alive    = true;
+    e.bornAt   = scene.time.now;
+    e.strafeSign = Math.random() < 0.5 ? -1 : 1;
 
     e.hitBlinkTween?.stop();
     e.hitBlinkTween = undefined;
@@ -50,10 +54,31 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   chase(px: number, py: number): void {
     if (!this.alive || !this.active) return;
     const angle = Phaser.Math.Angle.Between(this.x, this.y, px, py);
-    this.setVelocity(
-      Math.cos(angle) * this.typeDef.speed,
-      Math.sin(angle) * this.typeDef.speed,
-    );
+    if (this.typeDef.kind === 'normal') {
+      this.setVelocity(
+        Math.cos(angle) * this.typeDef.speed,
+        Math.sin(angle) * this.typeDef.speed,
+      );
+      return;
+    }
+
+    const dist = Phaser.Math.Distance.Between(this.x, this.y, px, py);
+    const aliveFor = (this.scene.time.now - this.bornAt) / 1000;
+    const hpRatio = Math.max(0.18, this.hp / this.maxHp);
+    const isBoss = this.typeDef.kind === 'boss';
+
+    const phase = aliveFor * (isBoss ? 1.95 : 1.55);
+    const strafe = Math.sin(phase) * (isBoss ? 0.42 : 0.28) * this.strafeSign;
+    const dashWindow = Math.sin(aliveFor * (isBoss ? 1.08 : 1.24)) > (isBoss ? 0.74 : 0.84);
+    const rageBoost = 1 + (1 - hpRatio) * (isBoss ? 0.34 : 0.22);
+    const dashBoost = dashWindow ? (isBoss ? 1.72 : 1.46) : 1;
+
+    let forward = this.typeDef.speed * rageBoost * dashBoost;
+    if (dist < (isBoss ? 155 : 120) && !dashWindow) forward *= 0.82;
+
+    const vx = Math.cos(angle) * forward - Math.sin(angle) * (forward * strafe);
+    const vy = Math.sin(angle) * forward + Math.cos(angle) * (forward * strafe);
+    this.setVelocity(vx, vy);
   }
 
   // ── Recebe dano (RF16, RF15) ───────────────────────────────

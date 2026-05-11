@@ -47,7 +47,30 @@ export class Sfx {
     this.sweep(scene, { from: 520, to: 980, duration: 0.12, volume: 0.08, wave: 'triangle' });
   }
 
-  static specialSpawn(scene: Phaser.Scene, kind: 'subboss' | 'boss'): void {
+  static specialSpawn(scene: Phaser.Scene, kind: 'subboss' | 'boss', type?: string): void {
+    if (type === 'MINIBOSS') {
+      this.sweep(scene, { from: 300, to: 110, duration: 0.28, volume: 0.11, wave: 'triangle' });
+      this.sweep(scene, { from: 520, to: 690, duration: 0.2, volume: 0.06, wave: 'sine', delay: 0.08 });
+      return;
+    }
+    if (type === 'MINIBOSS_WARLORD') {
+      this.sweep(scene, { from: 180, to: 70, duration: 0.24, volume: 0.12, wave: 'square' });
+      this.sweep(scene, { from: 120, to: 120, duration: 0.16, volume: 0.07, wave: 'sawtooth', delay: 0.05 });
+      return;
+    }
+    if (type === 'BOSS') {
+      this.sweep(scene, { from: 130, to: 45, duration: 0.4, volume: 0.16, wave: 'sawtooth' });
+      this.sweep(scene, { from: 70, to: 95, duration: 0.32, volume: 0.11, wave: 'square', delay: 0.12 });
+      this.sweep(scene, { from: 410, to: 280, duration: 0.28, volume: 0.07, wave: 'triangle', delay: 0.08 });
+      return;
+    }
+    if (type === 'BOSS_ABYSS') {
+      this.sweep(scene, { from: 95, to: 38, duration: 0.5, volume: 0.18, wave: 'sawtooth' });
+      this.sweep(scene, { from: 240, to: 480, duration: 0.34, volume: 0.08, wave: 'sine', delay: 0.1 });
+      this.sweep(scene, { from: 55, to: 62, duration: 0.42, volume: 0.09, wave: 'square', delay: 0.06 });
+      return;
+    }
+
     if (kind === 'boss') {
       this.sweep(scene, { from: 160, to: 50, duration: 0.32, volume: 0.13, wave: 'sawtooth' });
       this.sweep(scene, { from: 90, to: 140, duration: 0.24, volume: 0.08, wave: 'square', delay: 0.1 });

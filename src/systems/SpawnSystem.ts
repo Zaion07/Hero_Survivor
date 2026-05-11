@@ -4,6 +4,22 @@ import { Enemy } from '../entities/Enemy';
 import { CollectionTracker } from '../utils/CollectionTracker';
 import { Sfx } from '../utils/Sfx';
 
+type SpecialSpawnRequest = {
+  spawnId: string;
+  type: string;
+  waveIndex?: number;
+  message?: string;
+};
+
+const TIMED_ELITES: Array<{ time: number; type: string; message: string }> = [
+  { time: 60, type: 'TANK', message: '⚔️ ELITE: Golem (1:00)' },
+  { time: 120, type: 'BRUTE', message: '⚔️ ELITE: Carrasco (2:00)' },
+  { time: 180, type: 'MINIBOSS', message: '⚠️ SUBCHEFE: Necromante (3:00)' },
+  { time: 240, type: 'MINIBOSS_WARLORD', message: '⚠️ SUBCHEFE: Lorde da Guerra (4:00)' },
+  { time: 300, type: 'BOSS', message: '💀 CHEFÃO: Sr. do Vazio (5:00)' },
+  { time: 420, type: 'BOSS_ABYSS', message: '💀 CHEFÃO: Titã Abissal (7:00)' },
+];
+
 // =============================================================
 //  SpawnSystem — RF05 (geração fora do viewport)
 //               RF07 (hierarquia de inimigos)
@@ -24,6 +40,10 @@ export class SpawnSystem {
   private hordeSpawnTimer = 0;
 
   private spawnedSpecial: Set<string> = new Set();
+  private queuedSpecial: Set<string> = new Set();
+  private pendingSpecials: SpecialSpawnRequest[] = [];
+  private specialRetryTimer = 0;
+  private elitePressureTimer = 0;
 
   constructor(
     scene:  Phaser.Scene,
@@ -41,14 +61,17 @@ export class SpawnSystem {
 
     this.advanceWave();
     this.updateHorde(delta);
+    this.checkTimedElites();
+    this.checkSpecialSpawns();
+    this.processPendingSpecials(delta);
 
     this.spawnTimer -= delta;
-    if (this.spawnTimer <= 0) {
-      this.spawnTimer = this.currentWave.interval;
-      this.spawnRegular();
+    while (this.spawnTimer <= 0) {
+      this.spawnTimer += this.currentWave.interval * this.getSpawnIntervalMultiplier();
+      if (!this.shouldHoldRegularSpawn()) this.spawnRegular();
     }
 
-    this.checkSpecialSpawns();
+    this.updateElitePressure(delta);
   }
 
   private advanceWave(): void {
@@ -107,39 +130,177 @@ export class SpawnSystem {
     }
   }
 
-  private spawnEnemy(type: string): void {
+  private spawnEnemy(type: string, prioritize = false): Enemy | null {
     const { x, y } = this.randomOutsideViewport();
-    CollectionTracker.addMonster(type);
-    Enemy.spawn(this.scene, this.group, type, x, y);
+    let enemy = Enemy.spawn(this.scene, this.group, type, x, y);
+    if (!enemy && prioritize && this.recycleOneNormalEnemy()) {
+      enemy = Enemy.spawn(this.scene, this.group, type, x, y);
+    }
+    if (enemy) CollectionTracker.addMonster(type);
+    return enemy;
   }
 
   private checkSpecialSpawns(): void {
     CFG.WAVES.forEach((wave, idx) => {
       if (this.elapsed < wave.time) return;
 
-      wave.minibosses?.forEach(type => this.spawnSpecial(type, idx));
-      wave.bosses?.forEach(type => this.spawnSpecial(type, idx));
+      wave.minibosses?.forEach(type => this.enqueueSpecial(type, `wave:${idx}:${type}`, idx));
+      wave.bosses?.forEach(type => this.enqueueSpecial(type, `wave:${idx}:${type}`, idx));
     });
   }
 
-  private spawnSpecial(type: string, waveIndex: number): void {
-    const spawnId = `${waveIndex}:${type}`;
-    if (this.spawnedSpecial.has(spawnId)) return;
+  private checkTimedElites(): void {
+    TIMED_ELITES.forEach((entry, idx) => {
+      if (this.elapsed < entry.time) return;
+      this.enqueueSpecial(entry.type, `timed:${idx}:${entry.type}`, undefined, entry.message);
+    });
+  }
 
-    const def = CFG.ENEMY_TYPES[type];
-    if (!def) return;
+  private enqueueSpecial(type: string, spawnId: string, waveIndex?: number, message?: string): void {
+    if (this.spawnedSpecial.has(spawnId) || this.queuedSpecial.has(spawnId)) return;
 
-    this.spawnedSpecial.add(spawnId);
-    const { x, y } = this.randomOutsideViewport();
-    CollectionTracker.addMonster(type);
-    Enemy.spawn(this.scene, this.group, type, x, y);
+    this.queuedSpecial.add(spawnId);
+    this.pendingSpecials.push({ spawnId, type, waveIndex, message });
+  }
+
+  private processPendingSpecials(delta: number): void {
+    if (this.pendingSpecials.length === 0) return;
+
+    this.specialRetryTimer -= delta;
+    if (this.specialRetryTimer > 0) return;
+
+    const request = this.pendingSpecials[0];
+    const def = CFG.ENEMY_TYPES[request.type];
+    if (!def) {
+      // O console vai gritar de vermelho se o nome estiver errado!
+      console.error(`🚨 ERRO DE SPAWN: O chefe '${request.type}' não existe no CFG.ENEMY_TYPES!`);
+      this.pendingSpecials.shift();
+      this.queuedSpecial.delete(request.spawnId);
+      return;
+    }
+
+    const enemy = this.spawnPriorityEnemy(request.type);
+    if (!enemy) {
+      this.specialRetryTimer = 420;
+      return;
+    }
+
+    this.pendingSpecials.shift();
+    this.queuedSpecial.delete(request.spawnId);
+    this.spawnedSpecial.add(request.spawnId);
+
+    this.onSpecialSpawned(def, request.type, request.waveIndex, request.message);
+    this.specialRetryTimer = 0;
+  }
+
+  private spawnPriorityEnemy(type: string): Enemy | null {
+    let enemy = this.spawnEnemy(type, true);
+    if (enemy) return enemy;
+
+    // Fallback agressivo: libera espaço com inimigos ativos e tenta novamente.
+    for (let i = 0; i < 16; i++) {
+      if (!this.recycleOneNormalEnemy() && !this.recycleOneActiveEnemy()) break;
+      enemy = this.spawnEnemy(type, false);
+      if (enemy) return enemy;
+    }
+
+    return null;
+  }
+
+  private onSpecialSpawned(
+    def: (typeof CFG.ENEMY_TYPES)[string],
+    type: string,
+    waveIndex?: number,
+    message?: string,
+  ): void {
+    this.spawnSupportPack(def.kind);
+
     if (def.kind === 'subboss' || def.kind === 'boss') {
-      Sfx.specialSpawn(this.scene, def.kind);
+      Sfx.specialSpawn(this.scene, def.kind, type);
+    }
+
+    if (message) {
+      this.scene.events.emit('waveMessage', message);
+      return;
     }
 
     const title = def.kind === 'boss' ? 'CHEFÃO' : 'SUBCHEFE';
     const icon  = def.kind === 'boss' ? '💀' : '⚠️';
-    this.scene.events.emit('waveMessage', `${icon} ${title}: ${def.name}`);
+    const suffix = waveIndex !== undefined ? ` (Onda ${waveIndex + 1})` : '';
+    this.scene.events.emit('waveMessage', `${icon} ${title}: ${def.name}${suffix}`);
+  }
+
+  private spawnSupportPack(kind: 'normal' | 'subboss' | 'boss'): void {
+    if (kind === 'normal') return;
+    const normalPool = this.currentWave.pool.filter(t => CFG.ENEMY_TYPES[t]?.kind === 'normal');
+    const pool = normalPool.length > 0 ? normalPool : ['COMMON'];
+    const count = kind === 'boss' ? 8 : 4;
+    for (let i = 0; i < count; i++) {
+      const type = this.weightedRandom(pool);
+      this.spawnEnemy(type);
+    }
+  }
+
+  private updateElitePressure(delta: number): void {
+    const specials = this.getAliveSpecials();
+    if (specials.length === 0) {
+      this.elitePressureTimer = 0;
+      return;
+    }
+
+    this.elitePressureTimer -= delta;
+    if (this.elitePressureTimer > 0) return;
+
+    const hasBoss = specials.some(e => e.typeDef.kind === 'boss');
+    const normalPool = this.currentWave.pool.filter(t => CFG.ENEMY_TYPES[t]?.kind === 'normal');
+    const pool = normalPool.length > 0 ? normalPool : ['COMMON'];
+    const count = hasBoss ? 5 : 3;
+    for (let i = 0; i < count; i++) {
+      const type = this.weightedRandom(pool);
+      this.spawnEnemy(type);
+    }
+
+    this.elitePressureTimer = hasBoss ? 3600 : 5200;
+  }
+
+  private shouldHoldRegularSpawn(): boolean {
+    if (this.pendingSpecials.length === 0) return false;
+    const max = this.group.maxSize;
+    if (max <= 0) return false;
+    return this.group.countActive(true) >= Math.max(1, max - 10);
+  }
+
+  private getSpawnIntervalMultiplier(): number {
+    const specials = this.getAliveSpecials();
+    if (specials.length === 0) return 1;
+    const hasBoss = specials.some(e => e.typeDef.kind === 'boss');
+    return hasBoss ? 0.62 : 0.78;
+  }
+
+  private getAliveSpecials(): Enemy[] {
+    return this.group.getChildren()
+      .map(obj => obj as Enemy)
+      .filter(e => e.active && e.alive && e.typeDef.kind !== 'normal');
+  }
+
+  private recycleOneNormalEnemy(): boolean {
+    const normal = this.group.getChildren()
+      .map(obj => obj as Enemy)
+      .find(e => e.active && e.alive && e.typeDef.kind === 'normal');
+    if (!normal) return false;
+    normal.setVelocity(0, 0).setActive(false).setVisible(false);
+    (normal.body as Phaser.Physics.Arcade.Body).stop();
+    return true;
+  }
+
+  private recycleOneActiveEnemy(): boolean {
+    const enemy = this.group.getChildren()
+      .map(obj => obj as Enemy)
+      .find(e => e.active && e.alive);
+    if (!enemy) return false;
+    enemy.setVelocity(0, 0).setActive(false).setVisible(false);
+    (enemy.body as Phaser.Physics.Arcade.Body).stop();
+    return true;
   }
 
   // ── Posição aleatória FORA do campo de visão (RF05) ────────
