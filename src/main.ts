@@ -1,24 +1,37 @@
-import Phaser from 'phaser';
-import { CFG }          from './config';
-import { BootScene }    from './scenes/BootScene';
-import { MenuScene }    from './scenes/MenuScene';
-import { GameScene }    from './scenes/GameScene';
-import { HUDScene }     from './scenes/HUDScene';
-import { UpgradeScene } from './scenes/UpgradeScene';
+import Phaser from "phaser";
+import { CFG } from "./config";
+import { BootScene } from "./scenes/BootScene";
+import { MenuScene } from "./scenes/MenuScene";
+import { GameScene } from "./scenes/GameScene";
+import { HUDScene } from "./scenes/HUDScene";
+import { UpgradeScene } from "./scenes/UpgradeScene";
+import { setupAuthScreen } from "./authScreen";
+import { setupPauseScreen } from "./pauseScreen";
 
-const config: Phaser.Types.Core.GameConfig = {
-  type:   Phaser.AUTO,
-  width:  CFG.WIDTH,
-  height: CFG.HEIGHT,
-  // SEM parent — Phaser anexa o canvas direto ao body
-  backgroundColor: '#0a0a12',
+let game: Phaser.Game | null = null;
 
-  physics: {
-    default: 'arcade',
-    arcade: { debug: false },
-  },
+function startGame(): void {
+  if (game) {
+    return;
+  }
 
-  scene: [BootScene, MenuScene, GameScene, HUDScene, UpgradeScene],
-};
+  const config: Phaser.Types.Core.GameConfig = {
+    type: Phaser.AUTO,
+    width: CFG.WIDTH,
+    height: CFG.HEIGHT,
+    backgroundColor: "#0a0a12",
 
-new Phaser.Game(config);
+    physics: {
+      default: "arcade",
+      arcade: { debug: false },
+    },
+
+    scene: [BootScene, MenuScene, GameScene, HUDScene, UpgradeScene],
+  };
+
+  game = new Phaser.Game(config);
+
+  setupPauseScreen(game);
+}
+
+setupAuthScreen(startGame);
