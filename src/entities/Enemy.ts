@@ -13,8 +13,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   hp!:       number;
   maxHp!:    number;
   alive      = true;
+  stunnedUntil = 0;
+  isElite    = false;
+  xpValue    = 0;
+  baseScale  = 1;
+  nextSlamAt = 0;       // ataque telegrafado (subboss/boss)
+  nextShotAt = 0;       // disparo à distância (SHOOTER)
+  casting    = false;   // executando ataque telegrafado
   private bornAt = 0;
   private strafeSign = 1;
+  private animPhase  = 0;
   private hitBlinkTween?: Phaser.Tweens.Tween;
 
   // ── Factory: pega do pool e configura (RF05) ───────────────
@@ -53,7 +61,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     e.maxHp    = def.hp;
     e.alive    = true;
     e.bornAt   = scene.time.now;
+    e.stunnedUntil = 0;
+    e.isElite    = false;
+    e.xpValue    = def.xp;
+    e.baseScale  = 1;
+    e.casting    = false;
+    e.nextSlamAt = scene.time.now + 3500 + Math.random() * 2000;
+    e.nextShotAt = scene.time.now + 1200 + Math.random() * 1200;
     e.strafeSign = Math.random() < 0.5 ? -1 : 1;
+    e.animPhase  = Math.random() * Math.PI * 2;
+    e.setScale(1).setRotation(0);
 
     // 6. Reseta efeitos visuais de vidas passadas
     e.hitBlinkTween?.stop();
@@ -69,17 +86,75 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return e;
   }
 
+  // ── Variante elite: dourada, mais forte, dropa item ───────
+  makeElite(): void {
+    this.isElite   = true;
+    this.hp        = Math.round(this.hp * CFG.ELITE.HP_MULT);
+    this.maxHp     = this.hp;
+    this.xpValue   = Math.round(this.typeDef.xp * CFG.ELITE.XP_MULT);
+    this.baseScale = CFG.ELITE.SCALE;
+    this.setScale(this.baseScale);
+    this.setTint(CFG.ELITE.TINT);
+  }
+
+  /** Dano de contato (elites batem mais forte). */
+  get contactDamage(): number {
+    return this.isElite
+      ? Math.round(this.typeDef.dmg * CFG.ELITE.DMG_MULT)
+      : this.typeDef.dmg;
+  }
+
   // ── IA de perseguição (RF06) ──────────────────────────────
-  chase(px: number, py: number): void {
+  chase(px: number, py: number, pvx = 0, pvy = 0): void {
     if (!this.alive || !this.active) return;
-    
+
+    this.animate();
+
+    // Atordoado (knockback de habilidades) — mantém a velocidade imposta
+    if (this.scene.time.now < this.stunnedUntil) return;
+
     const angle = Phaser.Math.Angle.Between(this.x, this.y, px, py);
-    
+
     // Otimização: Cache da trigonometria para poupar processamento em hordas
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
 
     if (this.typeDef.kind === 'normal') {
+      // Olho Maldito: mantém distância para atirar
+      if (this.typeName === 'SHOOTER') {
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, px, py);
+        if (dist < 230) {
+          this.setVelocity(-cosA * this.typeDef.speed, -sinA * this.typeDef.speed);
+        } else if (dist > 400) {
+          this.setVelocity(cosA * this.typeDef.speed, sinA * this.typeDef.speed);
+        } else {
+          // Orbita lateralmente
+          this.setVelocity(
+            -sinA * this.typeDef.speed * 0.8 * this.strafeSign,
+            cosA * this.typeDef.speed * 0.8 * this.strafeSign,
+          );
+        }
+        return;
+      }
+
+      // Sombra Caçadora: intercepta o caminho do jogador para encurralar
+      if (this.typeName === 'FLANKER') {
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, px, py);
+        if (dist > 190) {
+          const ix = px + pvx * 0.75;
+          const iy = py + pvy * 0.75;
+          const ia = Phaser.Math.Angle.Between(this.x, this.y, ix, iy);
+          this.setVelocity(
+            Math.cos(ia) * this.typeDef.speed,
+            Math.sin(ia) * this.typeDef.speed,
+          );
+        } else {
+          // Bote final, mais rápido
+          this.setVelocity(cosA * this.typeDef.speed * 1.45, sinA * this.typeDef.speed * 1.45);
+        }
+        return;
+      }
+
       this.setVelocity(
         cosA * this.typeDef.speed,
         sinA * this.typeDef.speed,
@@ -106,6 +181,61 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setVelocity(vx, vy);
   }
 
+  // ── Animação procedural por tipo de inimigo ────────────────
+  private animate(): void {
+    const t = this.scene.time.now;
+    const p = this.animPhase;
+    const b = this.baseScale;
+
+    switch (this.typeName) {
+      case 'COMMON': {
+        // Morcego: bater de asas (abre/fecha horizontal)
+        const flap = Math.abs(Math.sin(t * 0.018 + p));
+        this.scaleX = b * (1 + flap * 0.22);
+        this.scaleY = b * (1 - flap * 0.12);
+        break;
+      }
+      case 'FAST': {
+        // Espírito: flutuação ondulante
+        this.scaleY   = b * (1 + Math.sin(t * 0.012 + p) * 0.14);
+        this.rotation = Math.sin(t * 0.008 + p) * 0.14;
+        break;
+      }
+      case 'SHOOTER': {
+        // Olho: pulsação nervosa
+        const pulse = Math.sin(t * 0.01 + p);
+        this.setScale(b * (1 + pulse * 0.08));
+        break;
+      }
+      case 'FLANKER': {
+        // Sombra: tremulação espectral
+        this.scaleX   = b * (1 + Math.sin(t * 0.016 + p) * 0.08);
+        this.rotation = Math.sin(t * 0.011 + p) * 0.1;
+        break;
+      }
+      case 'TANK':
+      case 'BRUTE': {
+        // Pisada pesada: balanço lento lado a lado
+        this.rotation = Math.sin(t * 0.007 + p) * 0.05;
+        this.scaleY   = b * (1 + Math.sin(t * 0.014 + p) * 0.03);
+        break;
+      }
+      default: {
+        // Subchefes e chefes: respiração ameaçadora
+        const breathe = Math.sin(t * 0.004 + p);
+        this.setScale(b * (1 + breathe * 0.04));
+        this.rotation = Math.sin(t * 0.0025 + p) * 0.03;
+        break;
+      }
+    }
+  }
+
+  /** Restaura a cor padrão (elites mantêm o dourado). */
+  restoreTint(): void {
+    if (this.isElite) this.setTint(CFG.ELITE.TINT);
+    else this.clearTint();
+  }
+
   // ── Recebe dano (RF16, RF15) ───────────────────────────────
   takeDamage(amount: number, damageMult = 1): boolean {
     if (!this.alive || !this.active) return false;
@@ -125,7 +255,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       yoyo: true,
       onComplete: () => {
         this.setAlpha(1);
-        if (this.alive) this.clearTint();
+        if (this.alive && !this.casting) this.restoreTint();
       },
     });
 
@@ -143,6 +273,6 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     Sfx.enemyDie(this.scene);
     this.setVelocity(0, 0).setActive(false).setVisible(false);
     (this.body as Phaser.Physics.Arcade.Body).stop();
-    this.scene.events.emit('enemyDied', this.x, this.y, this.typeDef.xp, this.typeName);
+    this.scene.events.emit('enemyDied', this.x, this.y, this.xpValue, this.typeName, this.isElite);
   }
 }

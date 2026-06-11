@@ -4,6 +4,7 @@ import { CollectionTracker } from '../utils/CollectionTracker';
 import { Sfx } from '../utils/Sfx';
 import { getGlobalRanking, RankingPlayer } from '../services/rankingService';
 import { logoutUser } from '../services/authService';
+import { loadGame, clearSave, GameSave } from '../services/saveService';
 
 // =============================================================
 //  MenuScene — Tela inicial com bestiário, ranking e arsenal
@@ -23,15 +24,21 @@ type ArsenalItem = {
   kind: 'weapon' | 'upgrade';
 };
 
+// Armas das classes + melhorias passivas
 const ARSENAL: ArsenalItem[] = [
-  { id: 'WEAPON_AURA',   icon: '🌀', name: 'Aura Mágica', kind: 'weapon'  },
-  { id: 'WEAPON_ORB',    icon: '🔮', name: 'Orbe Mágico', kind: 'weapon'  },
-  { id: 'WEAPON_ARROW',  icon: '🏹', name: 'Flechas',     kind: 'weapon'  },
+  ...Object.values(CFG.WEAPON_INFO).map(w => ({
+    id: w.id,
+    icon: w.label.split(' ')[0],
+    name: w.label.split(' ').slice(1).join(' '),
+    kind: 'weapon' as const,
+  })),
   { id: 'MAX_HP',        icon: '❤️', name: 'Vida',        kind: 'upgrade' },
   { id: 'SPEED',         icon: '💨', name: 'Velocidade',  kind: 'upgrade' },
   { id: 'DAMAGE',        icon: '⚔️', name: 'Dano',        kind: 'upgrade' },
   { id: 'PICKUP_RADIUS', icon: '🧲', name: 'Magnetismo',  kind: 'upgrade' },
   { id: 'COOLDOWN',      icon: '⚡', name: 'Cadência',    kind: 'upgrade' },
+  { id: 'REGEN',         icon: '✨', name: 'Regeneração', kind: 'upgrade' },
+  { id: 'ABILITY',       icon: '⭐', name: 'Habilidade',  kind: 'upgrade' },
 ];
 
 export class MenuScene extends Phaser.Scene {
@@ -64,10 +71,12 @@ export class MenuScene extends Phaser.Scene {
 
     this.buildPlayButton(W, H);
 
+    void this.buildContinuePanel(W);
+
     this.add.text(
       W / 2,
       H - 14,
-      'WASD / Setas: Mover  •  ESC: Pausar  •  1 2 3: Escolher Melhoria  •  R: Menu',
+      'WASD / Setas: Mover  •  ESPAÇO: Habilidade  •  Q: Suprema  •  ESC: Pausar  •  1 2 3: Melhoria  •  R: Menu',
       {
         fontSize: '10px',
         color: '#333355',
@@ -298,9 +307,9 @@ export class MenuScene extends Phaser.Scene {
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(10);
 
-    const cardW = 100;
+    const cardW = 80;
     const cardH = 148;
-    const gap = 8;
+    const gap = 5;
     const totalW = MONSTERS.length * cardW + (MONSTERS.length - 1) * gap;
     const startX = (W - totalW) / 2;
     const startY = 128;
@@ -362,9 +371,9 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    const imgY = y + 66;
-    const maxPx = 70;
-    const scale = Math.min(maxPx / monster.size, 1.8);
+    const imgY = y + 62;
+    const maxPx = 54;
+    const scale = Math.min(maxPx / monster.size, 1.7);
 
     const img = this.add.image(cx, imgY, monster.key)
       .setScale(scale)
@@ -374,19 +383,21 @@ export class MenuScene extends Phaser.Scene {
       img.setTint(0x0a0a14).setAlpha(0.45);
     }
 
-    this.add.text(cx, y + h - 38, discovered ? monster.name : '???', {
-      fontSize: '11px',
+    this.add.text(cx, y + h - 40, discovered ? monster.name : '???', {
+      fontSize: '9px',
       color: discovered ? '#d4af37' : '#2a2a44',
       fontFamily: 'Cinzel, Georgia, serif',
       stroke: '#000',
       strokeThickness: 2,
-    }).setOrigin(0.5).setDepth(8);
+      align: 'center',
+      wordWrap: { width: w - 6 },
+    }).setOrigin(0.5, 0).setDepth(8);
 
     if (discovered) {
       const def = CFG.ENEMY_TYPES[monster.type];
 
-      this.add.text(cx, y + h - 22, `HP ${def.hp}  ·  XP ${def.xp}`, {
-        fontSize: '9px',
+      this.add.text(cx, y + h - 14, `HP ${def.hp} · XP ${def.xp}`, {
+        fontSize: '8px',
         color: '#55557a',
         fontFamily: 'Cinzel, Georgia, serif',
       }).setOrigin(0.5).setDepth(8);
@@ -406,13 +417,13 @@ export class MenuScene extends Phaser.Scene {
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(10);
 
-    const iconW = 100;
-    const iconH = 58;
-    const gapX = 14;
-    const gapY = 10;
-    const perRow = 4;
+    const iconW = 84;
+    const iconH = 38;
+    const gapX = 10;
+    const gapY = 6;
+    const perRow = 6;
     const rowW = perRow * iconW + (perRow - 1) * gapX;
-    const startX = (W - rowW) / 2;
+    const startX = (W - rowW) / 2 - 40; // desloca para não cobrir o ranking
     const startY = 312;
 
     ARSENAL.forEach((item, i) => {
@@ -451,65 +462,84 @@ export class MenuScene extends Phaser.Scene {
       bg.fillRect(x + 1, y + 1, w - 2, h / 2);
     }
 
-    this.add.text(cx, y + 18, discovered ? item.icon : '?', {
-      fontSize: discovered ? '22px' : '16px',
+    this.add.text(cx, y + 13, discovered ? item.icon : '?', {
+      fontSize: discovered ? '14px' : '12px',
       color: discovered ? '#ffffff' : '#1e1e33',
     }).setOrigin(0.5).setDepth(8);
 
-    this.add.text(cx, y + h - 13, discovered ? item.name : '???', {
-      fontSize: '9px',
-      color: discovered ? '#aa88cc' : '#1e1e33',
+    this.add.text(cx, y + h - 9, discovered ? item.name : '???', {
+      fontSize: '8px',
+      color: discovered
+        ? (item.kind === 'weapon' ? '#aa88cc' : '#7799aa')
+        : '#1e1e33',
       fontFamily: 'Cinzel, Georgia, serif',
     }).setOrigin(0.5).setDepth(8);
-
-    if (discovered) {
-      const badge = item.kind === 'weapon' ? 'ARMA' : 'BÔNUS';
-      const badgeColor = item.kind === 'weapon' ? '#4400aa' : '#003344';
-      const bg2 = this.add.graphics().setDepth(7);
-
-      bg2.fillStyle(item.kind === 'weapon' ? 0x220044 : 0x001122, 0.9);
-      bg2.fillRect(x + 4, y + 3, 34, 10);
-
-      this.add.text(x + 21, y + 8, badge, {
-        fontSize: '7px',
-        color: badgeColor,
-        fontFamily: 'Cinzel, Georgia, serif',
-      }).setOrigin(0.5).setDepth(9);
-    }
   }
 
   private buildPlayButton(W: number, _H: number): void {
     const btnW = 290;
     const btnH = 52;
-    const btnX = W / 2 - btnW / 2;
     const btnY = 456;
+    const gap  = 26;
 
+    this.buildMenuButton(
+      W / 2 - gap / 2 - btnW,
+      btnY, btnW, btnH,
+      '⚔  AVENTURA SOLO  ⚔',
+      () => this.startGame('solo'),
+    );
+
+    this.buildMenuButton(
+      W / 2 + gap / 2,
+      btnY, btnW, btnH,
+      '🌐  BATALHA ROYALE  🌐',
+      () => this.startGame('online'),
+    );
+
+    this.input.keyboard!.addKey('SPACE').once('down', () => this.startGame('solo'));
+    this.input.keyboard!.addKey('ENTER').once('down', () => this.startGame('solo'));
+
+    this.add.text(W / 2, btnY + btnH + 14, 'ENTER ou ESPAÇO para jogar solo', {
+      fontSize: '10px',
+      color: '#333355',
+      fontFamily: 'Cinzel, Georgia, serif',
+    }).setOrigin(0.5).setDepth(10);
+  }
+
+  private buildMenuButton(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    onClick: () => void,
+  ): void {
     const bg = this.add.graphics().setDepth(10);
 
     const drawBtn = (hover: boolean) => {
       bg.clear();
 
       bg.fillStyle(hover ? 0x2d0055 : 0x150033, 1);
-      bg.fillRect(btnX, btnY, btnW, btnH);
+      bg.fillRect(x, y, w, h);
 
       bg.lineStyle(2.5, hover ? 0xffd700 : 0xd4af37, 1);
-      bg.strokeRect(btnX, btnY, btnW, btnH);
+      bg.strokeRect(x, y, w, h);
 
       bg.lineStyle(1, hover ? 0xcc55ff : 0x5500aa, 0.6);
-      bg.strokeRect(btnX + 4, btnY + 4, btnW - 8, btnH - 8);
+      bg.strokeRect(x + 4, y + 4, w - 8, h - 8);
     };
 
     drawBtn(false);
 
-    const txt = this.add.text(W / 2, btnY + btnH / 2, '⚔  INICIAR AVENTURA  ⚔', {
-      fontSize: '20px',
+    const txt = this.add.text(x + w / 2, y + h / 2, label, {
+      fontSize: '17px',
       color: '#d4af37',
       fontFamily: 'Cinzel Decorative, Cinzel, Georgia, serif',
       stroke: '#000',
       strokeThickness: 5,
     }).setOrigin(0.5).setDepth(11);
 
-    const hitbox = this.add.rectangle(W / 2, btnY + btnH / 2, btnW, btnH, 0xffffff, 0)
+    const hitbox = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0xffffff, 0)
       .setInteractive({ useHandCursor: true })
       .setDepth(12);
 
@@ -523,10 +553,7 @@ export class MenuScene extends Phaser.Scene {
       txt.setColor('#d4af37');
     });
 
-    hitbox.on('pointerdown', () => this.startGame());
-
-    this.input.keyboard!.addKey('SPACE').once('down', () => this.startGame());
-    this.input.keyboard!.addKey('ENTER').once('down', () => this.startGame());
+    hitbox.on('pointerdown', onClick);
 
     this.tweens.add({
       targets: txt,
@@ -536,21 +563,90 @@ export class MenuScene extends Phaser.Scene {
       duration: 1200,
       ease: 'Sine.InOut',
     });
-
-    this.add.text(W / 2, btnY + btnH + 14, 'ENTER ou ESPAÇO para iniciar', {
-      fontSize: '10px',
-      color: '#333355',
-      fontFamily: 'Cinzel, Georgia, serif',
-    }).setOrigin(0.5).setDepth(10);
   }
 
-  private startGame(): void {
+  // ── Painel "Continuar" — partida salva (Salvar e Sair) ────
+  private async buildContinuePanel(W: number): Promise<void> {
+    let save: GameSave | null = null;
+    try {
+      save = await loadGame();
+    } catch (error) {
+      console.error('Erro ao carregar save:', error);
+      return;
+    }
+    if (!save || !this.scene.isActive()) return;
+
+    const def = CFG.CHARACTERS[save.charId];
+    const m = Math.floor(save.elapsedSeconds / 60).toString().padStart(2, '0');
+    const s = Math.floor(save.elapsedSeconds % 60).toString().padStart(2, '0');
+
+    const panelW = 600;
+    const panelH = 38;
+    const x = W / 2 - panelW / 2;
+    const y = 538;
+
+    const bg = this.add.graphics().setDepth(10);
+    const draw = (hover: boolean) => {
+      bg.clear();
+      bg.fillStyle(hover ? 0x123312 : 0x0a1f0a, 0.96);
+      bg.fillRect(x, y, panelW, panelH);
+      bg.lineStyle(1.5, hover ? 0x66ff88 : 0x2e8b57, 0.95);
+      bg.strokeRect(x, y, panelW, panelH);
+    };
+    draw(false);
+
+    const txt = this.add.text(
+      x + 14,
+      y + panelH / 2,
+      `▶  CONTINUAR:  ${def?.icon ?? '❔'} ${def?.name ?? save.charId}  —  LVL ${save.level}  •  ⏱ ${m}:${s}  •  ☠ ${save.kills}`,
+      {
+        fontSize: '13px',
+        color: '#88eeaa',
+        fontFamily: 'Cinzel, Georgia, serif',
+        stroke: '#000',
+        strokeThickness: 3,
+      },
+    ).setOrigin(0, 0.5).setDepth(11);
+
+    const hit = this.add.rectangle(x + panelW / 2 - 20, y + panelH / 2, panelW - 40, panelH, 0xffffff, 0)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(12);
+
+    hit.on('pointerover', () => { draw(true); txt.setColor('#bbffcc'); });
+    hit.on('pointerout',  () => { draw(false); txt.setColor('#88eeaa'); });
+    hit.on('pointerdown', () => {
+      Sfx.unlock(this);
+      this.registry.set('characterId', save!.charId);
+      this.cameras.main.flash(250, 100, 220, 120);
+      this.time.delayedCall(180, () => {
+        this.scene.start('Game', { characterId: save!.charId, resume: save! });
+      });
+    });
+
+    // Descartar save
+    const discard = this.add.text(x + panelW - 12, y + panelH / 2, '✖', {
+      fontSize: '14px',
+      color: '#cc6666',
+      fontFamily: 'Arial',
+      stroke: '#000',
+      strokeThickness: 3,
+    }).setOrigin(1, 0.5).setDepth(13).setInteractive({ useHandCursor: true });
+
+    discard.on('pointerover', () => discard.setColor('#ff4444'));
+    discard.on('pointerout',  () => discard.setColor('#cc6666'));
+    discard.on('pointerdown', async () => {
+      await clearSave();
+      bg.destroy(); txt.destroy(); hit.destroy(); discard.destroy();
+    });
+  }
+
+  private startGame(mode: 'solo' | 'online'): void {
     Sfx.unlock(this);
 
     this.cameras.main.flash(250, 212, 175, 55);
 
     this.time.delayedCall(180, () => {
-      this.scene.start('Game');
+      this.scene.start('CharSelect', { mode });
     });
   }
 }

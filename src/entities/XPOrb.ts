@@ -24,9 +24,17 @@ export class XPOrb extends Phaser.Physics.Arcade.Sprite {
     return orb;
   }
 
+  /** Ímã Arcano — passa a perseguir o jogador de qualquer distância */
+  forceAttract(): void {
+    if (this.active) this.attracting = true;
+  }
+
   // ── Magnetismo a cada frame (RF03) ────────────────────────
   magnetUpdate(px: number, py: number, pickupRadius: number): void {
     if (!this.active) return;
+
+    // Cintilação — balanço suave do cristal
+    this.rotation = Math.sin(this.scene.time.now * 0.005 + this.x * 0.1) * 0.35;
 
     const dist = Phaser.Math.Distance.Between(this.x, this.y, px, py);
 

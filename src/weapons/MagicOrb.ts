@@ -23,6 +23,13 @@ export class MagicOrb extends Weapon {
     this.numShots = Math.min(8, this.numShots + 1);
   }
 
+  protected override evolve(): void {
+    this.numShots = Math.min(10, this.numShots + 2);
+    this.projectileSpeed += 90;
+    this.projectileLife  += 250;
+    this.damage *= 1.3;
+  }
+
   protected fire(
     _enemies:     Phaser.Physics.Arcade.Group,
     projectiles?: Phaser.Physics.Arcade.Group,
@@ -35,26 +42,20 @@ export class MagicOrb extends Weapon {
     const angleStep = (Math.PI * 2) / numShots;
 
     for (let i = 0; i < numShots; i++) {
-      const p = projectiles.get(player.x, player.y, 'proj_orb') as Phaser.Physics.Arcade.Sprite | null;
+      const p = this.acquireProjectile(projectiles, player.x, player.y, 'proj_orb');
       if (!p) break;
 
-      p.setActive(true).setVisible(true).setDepth(7);
       p.setData('damage', damage * mult);
-      p.setData('type', 'orb');
+      p.setData('pierce', this.evolved ? 1 : 0);
+      if (this.evolved) p.setScale(1.5).setTint(0xff99ff);
 
       const angle = angleStep * i;
-      (p.body as Phaser.Physics.Arcade.Body).reset(player.x, player.y);
       p.setVelocity(
         Math.cos(angle) * projectileSpeed,
         Math.sin(angle) * projectileSpeed,
       );
 
-      this.scene.time.delayedCall(projectileLife, () => {
-        if (p.active) {
-          p.setActive(false).setVisible(false);
-          (p.body as Phaser.Physics.Arcade.Body).stop();
-        }
-      });
+      this.expireProjectile(p, projectileLife);
     }
   }
 }

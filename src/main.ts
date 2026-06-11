@@ -2,6 +2,8 @@ import Phaser from "phaser";
 import { CFG } from "./config";
 import { BootScene } from "./scenes/BootScene";
 import { MenuScene } from "./scenes/MenuScene";
+import { CharacterSelectScene } from "./scenes/CharacterSelectScene";
+import { RoomScene } from "./scenes/RoomScene";
 import { GameScene } from "./scenes/GameScene";
 import { HUDScene } from "./scenes/HUDScene";
 import { UpgradeScene } from "./scenes/UpgradeScene";
@@ -26,7 +28,7 @@ function startGame(): void {
       arcade: { debug: false },
     },
 
-    scene: [BootScene, MenuScene, GameScene, HUDScene, UpgradeScene],
+    scene: [BootScene, MenuScene, CharacterSelectScene, RoomScene, GameScene, HUDScene, UpgradeScene],
   };
 
   game = new Phaser.Game(config);

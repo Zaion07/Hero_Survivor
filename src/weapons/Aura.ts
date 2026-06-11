@@ -26,16 +26,26 @@ export class Aura extends Weapon {
     this.radius += 12;
   }
 
+  protected override evolve(): void {
+    this.radius += 55;
+    this.damage *= 1.5;
+  }
+
+  getRadius(): number {
+    return this.radius;
+  }
+
   // Chamado a cada frame pelo GameScene para desenhar o anel
   drawRing(): void {
     const { player, radius, firing } = this;
+    const color = this.evolved ? 0xff6622 : 0x3498db;
     this.gfx.clear();
     if (firing) {
-      this.gfx.lineStyle(3, 0x3498db, 1.0);
-      this.gfx.fillStyle(0x3498db, 0.08);
+      this.gfx.lineStyle(3, color, 1.0);
+      this.gfx.fillStyle(color, 0.08);
       this.gfx.fillCircle(player.x, player.y, radius);
     } else {
-      this.gfx.lineStyle(1.5, 0x3498db, 0.3);
+      this.gfx.lineStyle(1.5, color, 0.3);
     }
     this.gfx.strokeCircle(player.x, player.y, radius);
   }

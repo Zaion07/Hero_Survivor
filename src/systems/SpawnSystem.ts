@@ -12,6 +12,7 @@ type SpecialSpawnRequest = {
 };
 
 const TIMED_ELITES: Array<{ time: number; type: string; message: string }> = [
+  { time: 1, type: 'GUARDIAN', message: '⚠️ O GUARDIÃO ANCESTRAL despertou com você!' },
   { time: 60, type: 'TANK', message: '⚔️ ELITE: Golem (1:00)' },
   { time: 120, type: 'BRUTE', message: '⚔️ ELITE: Carrasco (2:00)' },
   { time: 180, type: 'MINIBOSS', message: '⚠️ SUBCHEFE: Necromante (3:00)' },
@@ -136,8 +137,33 @@ export class SpawnSystem {
     if (!enemy && prioritize && this.recycleOneNormalEnemy()) {
       enemy = Enemy.spawn(this.scene, this.group, type, x, y);
     }
-    if (enemy) CollectionTracker.addMonster(type);
+    if (enemy) {
+      CollectionTracker.addMonster(type);
+
+      // Variante elite dourada (somente inimigos normais)
+      if (enemy.typeDef.kind === 'normal' && Math.random() < CFG.ELITE.CHANCE) {
+        enemy.makeElite();
+      }
+    }
     return enemy;
+  }
+
+  /** Retoma uma partida salva: avança o relógio e marca eventos já ocorridos. */
+  setElapsed(seconds: number): void {
+    this.elapsed = seconds;
+
+    // Eventos cronometrados que já aconteceram não devem disparar de novo
+    TIMED_ELITES.forEach((entry, idx) => {
+      if (entry.time <= seconds) {
+        this.spawnedSpecial.add(`timed:${idx}:${entry.type}`);
+      }
+    });
+
+    CFG.WAVES.forEach((wave, idx) => {
+      if (wave.time > seconds) return;
+      wave.minibosses?.forEach(type => this.spawnedSpecial.add(`wave:${idx}:${type}`));
+      wave.bosses?.forEach(type => this.spawnedSpecial.add(`wave:${idx}:${type}`));
+    });
   }
 
   private checkSpecialSpawns(): void {

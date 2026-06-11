@@ -1,16 +1,19 @@
 import Phaser from 'phaser';
 import { logoutUser } from './services/authService';
 import { getCurrentScore } from './services/scoreService';
+import { saveGame, GameSave } from './services/saveService';
 import { Sfx } from './utils/Sfx';
 
 let pauseScreen: HTMLDivElement | null = null;
 let pauseScoreText: HTMLParagraphElement | null = null;
 let musicButton: HTMLButtonElement | null = null;
+let saveButton: HTMLButtonElement | null = null;
 
 export function setupPauseScreen(game: Phaser.Game): void {
   pauseScreen = document.getElementById('pause-screen') as HTMLDivElement;
   pauseScoreText = document.getElementById('pause-score') as HTMLParagraphElement;
   musicButton = document.getElementById('pause-music-button') as HTMLButtonElement;
+  saveButton = document.getElementById('pause-save-button') as HTMLButtonElement;
 
   const resumeButton = document.getElementById('resume-button') as HTMLButtonElement;
   const logoutButton = document.getElementById('pause-logout-button') as HTMLButtonElement;
@@ -24,6 +27,34 @@ export function setupPauseScreen(game: Phaser.Game): void {
   logoutButton.addEventListener('click', async () => {
     await logoutUser();
     window.location.reload();
+  });
+
+  saveButton?.addEventListener('click', async () => {
+    const gameScene = game.scene.getScene('Game') as Phaser.Scene & {
+      getSaveState?: () => GameSave | null;
+    };
+    if (!gameScene?.getSaveState) return;
+
+    const save = gameScene.getSaveState();
+    if (!save) return; // royale ou já morto — não salva
+
+    saveButton!.disabled = true;
+    saveButton!.textContent = 'Salvando...';
+
+    try {
+      await saveGame(save);
+      game.scene.stop('Upgrade');
+      game.scene.stop('Game');
+      game.scene.stop('HUD');
+      game.scene.start('Menu');
+
+      if (pauseScreen) pauseScreen.style.display = 'none';
+    } catch (error) {
+      console.error('Erro ao salvar o jogo:', error);
+    } finally {
+      saveButton!.disabled = false;
+      saveButton!.textContent = '💾 Salvar e sair';
+    }
   });
 
   musicButton.addEventListener('click', () => {
@@ -75,6 +106,11 @@ function pauseGame(game: Phaser.Game): void {
   }
 
   updateMusicButtonText();
+
+  // Salvar só está disponível no modo solo
+  if (saveButton) {
+    saveButton.style.display = game.registry.get('isRoyale') === true ? 'none' : 'block';
+  }
 
   gameScene.scene.pause();
 

@@ -47,6 +47,38 @@ export class Sfx {
     this.sweep(scene, { from: 520, to: 980, duration: 0.12, volume: 0.08, wave: 'triangle' });
   }
 
+  static itemPickup(scene: Phaser.Scene): void {
+    this.sweep(scene, { from: 440, to: 760, duration: 0.1, volume: 0.07, wave: 'triangle' });
+    this.sweep(scene, { from: 760, to: 1180, duration: 0.1, volume: 0.05, wave: 'sine', delay: 0.08 });
+  }
+
+  static bombExplode(scene: Phaser.Scene): void {
+    this.sweep(scene, { from: 160, to: 35, duration: 0.4, volume: 0.16, wave: 'sawtooth' });
+    this.sweep(scene, { from: 90, to: 50, duration: 0.3, volume: 0.1, wave: 'square', delay: 0.05 });
+  }
+
+  static heal(scene: Phaser.Scene): void {
+    this.sweep(scene, { from: 520, to: 880, duration: 0.14, volume: 0.07, wave: 'sine' });
+    this.sweep(scene, { from: 660, to: 1100, duration: 0.12, volume: 0.04, wave: 'triangle', delay: 0.06 });
+  }
+
+  static ability(scene: Phaser.Scene, charId: string): void {
+    if (charId === 'KNIGHT') {
+      // Escudo Divino — acorde grave e sólido
+      this.sweep(scene, { from: 220, to: 440, duration: 0.25, volume: 0.1, wave: 'triangle' });
+      this.sweep(scene, { from: 330, to: 660, duration: 0.22, volume: 0.06, wave: 'sine', delay: 0.06 });
+      return;
+    }
+    if (charId === 'RANGER') {
+      // Dash Sombrio — whoosh rápido
+      this.sweep(scene, { from: 900, to: 240, duration: 0.16, volume: 0.08, wave: 'sawtooth' });
+      return;
+    }
+    // Nova Arcana — explosão mágica
+    this.sweep(scene, { from: 140, to: 50, duration: 0.35, volume: 0.14, wave: 'sawtooth' });
+    this.sweep(scene, { from: 600, to: 1400, duration: 0.3, volume: 0.07, wave: 'sine', delay: 0.04 });
+  }
+
   static specialSpawn(scene: Phaser.Scene, kind: 'subboss' | 'boss', type?: string): void {
     if (type === 'MINIBOSS') {
       this.sweep(scene, { from: 300, to: 110, duration: 0.28, volume: 0.11, wave: 'triangle' });
@@ -82,15 +114,51 @@ export class Sfx {
   static weaponFire(scene: Phaser.Scene, weaponType: string): void {
     if (!this.allow(scene, `weapon:${weaponType}`, 80)) return;
 
-    if (weaponType === 'WEAPON_ARROW') {
-      this.sweep(scene, { from: 660, to: 330, duration: 0.05, volume: 0.04, wave: 'square' });
-      return;
-    }
-    if (weaponType === 'WEAPON_ORB') {
-      this.sweep(scene, { from: 420, to: 560, duration: 0.08, volume: 0.04, wave: 'sine' });
-      return;
+    switch (weaponType) {
+      case 'WEAPON_ARROW':
+        this.sweep(scene, { from: 660, to: 330, duration: 0.05, volume: 0.04, wave: 'square' });
+        return;
+      case 'WEAPON_ORB':
+        this.sweep(scene, { from: 420, to: 560, duration: 0.08, volume: 0.04, wave: 'sine' });
+        return;
+      case 'WEAPON_SWORD':
+        this.sweep(scene, { from: 880, to: 320, duration: 0.07, volume: 0.05, wave: 'sawtooth' });
+        return;
+      case 'WEAPON_AXE':
+        this.sweep(scene, { from: 300, to: 140, duration: 0.12, volume: 0.05, wave: 'square' });
+        return;
+      case 'WEAPON_KNIFE':
+        this.sweep(scene, { from: 980, to: 620, duration: 0.04, volume: 0.03, wave: 'square' });
+        return;
+      case 'WEAPON_BOOMERANG':
+        this.sweep(scene, { from: 360, to: 580, duration: 0.14, volume: 0.04, wave: 'triangle' });
+        return;
+      case 'WEAPON_LIGHTNING':
+        this.sweep(scene, { from: 1400, to: 180, duration: 0.1, volume: 0.07, wave: 'sawtooth' });
+        this.sweep(scene, { from: 90, to: 55, duration: 0.18, volume: 0.05, wave: 'square', delay: 0.04 });
+        return;
     }
     this.sweep(scene, { from: 180, to: 240, duration: 0.09, volume: 0.03, wave: 'triangle' });
+  }
+
+  static ultimate(scene: Phaser.Scene, charId: string): void {
+    if (charId === 'KNIGHT') {
+      // Julgamento Celestial — fanfarra grave
+      this.sweep(scene, { from: 220, to: 880, duration: 0.4, volume: 0.13, wave: 'triangle' });
+      this.sweep(scene, { from: 110, to: 440, duration: 0.45, volume: 0.1, wave: 'sawtooth', delay: 0.08 });
+      this.sweep(scene, { from: 660, to: 1320, duration: 0.3, volume: 0.07, wave: 'sine', delay: 0.18 });
+      return;
+    }
+    if (charId === 'RANGER') {
+      // Tempestade de Flechas — vento crescente
+      this.sweep(scene, { from: 240, to: 1100, duration: 0.5, volume: 0.1, wave: 'sawtooth' });
+      this.sweep(scene, { from: 800, to: 400, duration: 0.35, volume: 0.07, wave: 'triangle', delay: 0.15 });
+      return;
+    }
+    // Buraco Negro — sucção profunda
+    this.sweep(scene, { from: 300, to: 30, duration: 0.9, volume: 0.15, wave: 'sawtooth' });
+    this.sweep(scene, { from: 1200, to: 80, duration: 0.7, volume: 0.08, wave: 'sine', delay: 0.1 });
+    this.sweep(scene, { from: 55, to: 42, duration: 0.8, volume: 0.09, wave: 'square', delay: 0.2 });
   }
 
   static startDungeonBgm(scene: Phaser.Scene): void {

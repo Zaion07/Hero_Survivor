@@ -1,27 +1,40 @@
 import Phaser from 'phaser';
 import { Weapon } from './Weapon';
 import type { Player } from '../entities/Player';
-import { Enemy } from '../entities/Enemy';
 import { Sfx } from '../utils/Sfx';
 
 // =============================================================
-//  Arrow — flecha no inimigo mais próximo (RF02, RF12)
+//  Arrow — flecha no inimigo mais próximo (arma da Caçadora)
+//  Ganha perfuração, alcance e flechas extras por nível
+//  Evolui para Flecha Fantasma: atravessa tudo
 // =============================================================
 export class Arrow extends Weapon {
   readonly type  = 'WEAPON_ARROW';
-  readonly label = '🏹 Flechas';
+  readonly label = '🏹 Flecha';
 
-  private projectileSpeed = 550;
-  private projectileLife  = 1500;
-  private piercing        = false;
+  private projectileSpeed = 560;
+  private projectileLife  = 1400;
+  private pierce          = 0;
+  private arrows          = 1;
 
   constructor(scene: Phaser.Scene, player: Player) {
-    super(scene, player, 1600, 28);
+    super(scene, player, 1400, 28);
   }
 
   override upgrade(): void {
     super.upgrade();
-    if (this.level >= 4) this.piercing = true;
+    // Progressão da Caçadora: velocidade, alcance, perfuração, flechas extras
+    this.projectileSpeed += 60;
+    this.projectileLife  += 140;
+    if (this.level === 3) this.pierce = 1;
+    if (this.level === 4) this.arrows = 2;
+  }
+
+  protected override evolve(): void {
+    this.pierce  = Infinity;
+    this.arrows += 1;
+    this.damage *= 1.3;
+    this.projectileSpeed += 120;
   }
 
   protected fire(
@@ -30,46 +43,36 @@ export class Arrow extends Weapon {
   ): void {
     if (!projectiles) return;
 
-    const nearest = this.getNearestEnemy(enemies);
+    const nearest = this.nearestEnemy(enemies);
     if (!nearest) return;
 
-    const { player, projectileSpeed, projectileLife, damage, piercing } = this;
-    const mult  = player.stats.damageMult;
-    const angle = Phaser.Math.Angle.Between(player.x, player.y, nearest.x, nearest.y);
-
-    const p = projectiles.get(player.x, player.y, 'proj_arrow') as Phaser.Physics.Arcade.Sprite | null;
-    if (!p) return;
     Sfx.weaponFire(this.scene, this.type);
 
-    p.setActive(true).setVisible(true).setDepth(7);
-    p.setData('damage',   damage * mult);
-    p.setData('type',     'arrow');
-    p.setData('piercing', piercing);
-    p.setRotation(angle);
+    const mult = this.player.stats.damageMult;
+    const baseAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, nearest.x, nearest.y);
 
-    (p.body as Phaser.Physics.Arcade.Body).reset(player.x, player.y);
-    p.setVelocity(
-      Math.cos(angle) * projectileSpeed,
-      Math.sin(angle) * projectileSpeed,
-    );
+    for (let i = 0; i < this.arrows; i++) {
+      const p = this.acquireProjectile(projectiles, this.player.x, this.player.y, 'proj_arrow');
+      if (!p) break;
 
-    this.scene.time.delayedCall(projectileLife, () => {
-      if (p.active) {
-        p.setActive(false).setVisible(false);
-        (p.body as Phaser.Physics.Arcade.Body).stop();
+      // Leque sutil quando há múltiplas flechas
+      const offset = this.arrows > 1 ? (i - (this.arrows - 1) / 2) * 0.14 : 0;
+      const angle  = baseAngle + offset;
+
+      p.setData('damage', this.damage * mult);
+      p.setData('pierce', this.pierce);
+      p.setRotation(angle);
+
+      if (this.evolved) {
+        p.setTint(0x88ffee).setAlpha(0.85);
       }
-    });
-  }
 
-  private getNearestEnemy(enemies: Phaser.Physics.Arcade.Group): Enemy | null {
-    let nearest: Enemy | null = null;
-    let minDist = Infinity;
-    enemies.getChildren().forEach(obj => {
-      const e = obj as Enemy;
-      if (!e.alive || !e.active) return;
-      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, e.x, e.y);
-      if (d < minDist) { minDist = d; nearest = e; }
-    });
-    return nearest;
+      p.setVelocity(
+        Math.cos(angle) * this.projectileSpeed,
+        Math.sin(angle) * this.projectileSpeed,
+      );
+
+      this.expireProjectile(p, this.projectileLife);
+    }
   }
 }
