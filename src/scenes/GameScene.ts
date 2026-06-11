@@ -994,6 +994,7 @@ export class GameScene extends Phaser.Scene {
 
     this.time.delayedCall(WINDUP, () => {
       this.tweens.killTweensOf(zone);
+      this.tweens.killTweensOf(shrink);
       zone.destroy();
       shrink.destroy();
 
