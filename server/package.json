@@ -1,0 +1,19 @@
+{
+  "name": "herosurvivor-server",
+  "version": "1.0.0",
+  "description": "Servidor multiplayer do Hero Survivor",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.3",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
