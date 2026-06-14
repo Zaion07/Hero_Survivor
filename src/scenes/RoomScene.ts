@@ -40,6 +40,8 @@ export class RoomScene extends Phaser.Scene {
   private starting = false;
   private busy = false;
   private autoStarting = false;
+  private highestPlayerCount = 0;
+  private returningToMenu = false;
 
   private screenMode: ScreenMode = 'menu';
   private activeField: InputField = null;
@@ -64,6 +66,8 @@ export class RoomScene extends Phaser.Scene {
     this.starting = false;
     this.busy = false;
     this.autoStarting = false;
+    this.highestPlayerCount = 0;
+    this.returningToMenu = false;
     this.screenMode = 'menu';
     this.activeField = null;
 
@@ -491,11 +495,7 @@ export class RoomScene extends Phaser.Scene {
       this.room = room;
 
       if (!room) {
-        this.roomCode = null;
-        this.screenMode = 'menu';
-        this.unsubPlayers?.();
-        this.redraw();
-        this.flashMessage('A sala foi desfeita');
+        this.returnToMenu('A sala foi encerrada porque um jogador saiu');
         return;
       }
 
@@ -519,13 +519,53 @@ export class RoomScene extends Phaser.Scene {
     });
 
     this.unsubPlayers = listenPlayers(code, players => {
+      const previousHighest = this.highestPlayerCount;
+
       this.players = players;
+      this.highestPlayerCount = Math.max(this.highestPlayerCount, players.length);
+
+      const maxPlayers = this.room?.maxPlayers ?? 2;
+
+      // Sala de 2: entrou os 2 jogadores e depois alguém saiu.
+      // Quem ficou volta para o menu inicial em vez de ficar preso na sala.
+      if (
+        !this.starting
+        && !this.returningToMenu
+        && this.room?.status === 'waiting'
+        && maxPlayers === 2
+        && previousHighest >= 2
+        && players.length < 2
+      ) {
+        this.returnToMenu('O outro jogador saiu da sala');
+        return;
+      }
+
       this.maybeAutoStart();
 
       if (!this.starting) this.redraw();
     });
 
     this.redraw();
+  }
+
+  private returnToMenu(message: string): void {
+    if (this.returningToMenu) return;
+
+    this.returningToMenu = true;
+    this.roomCode = null;
+    this.room = null;
+    this.players = [];
+    this.screenMode = 'menu';
+    this.activeField = null;
+
+    this.unsubRoom?.();
+    this.unsubPlayers?.();
+
+    this.flashMessage(message);
+
+    this.time.delayedCall(900, () => {
+      this.scene.start('Menu');
+    });
   }
 
   private maybeAutoStart(): void {

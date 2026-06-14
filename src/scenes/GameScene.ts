@@ -86,6 +86,8 @@ export class GameScene extends Phaser.Scene {
   private arenaActive      = false;
   private arenaRequested   = false;
   private finishedHandled  = false;
+  private royaleExitHandled = false;
+  private lastKnownMaxPlayers = 0;
   private syncTimer        = 0;
   private zoneTickTimer    = 0;
   private auraPvpTimer     = 0;
@@ -127,6 +129,8 @@ export class GameScene extends Phaser.Scene {
     this.arenaActive     = false;
     this.arenaRequested  = false;
     this.finishedHandled = false;
+    this.royaleExitHandled = false;
+    this.lastKnownMaxPlayers = 0;
     this.syncTimer       = 0;
     this.zoneTickTimer   = 0;
     this.auraPvpTimer    = 0;
@@ -451,8 +455,9 @@ export class GameScene extends Phaser.Scene {
     // Barras de HP nos inimigos
     this.drawEnemyHpBars();
 
-    // Spawn (RF05, RF08) — desligado na arena do royale
-    if (!this.arenaActive) this.spawn.update(delta);
+    // Spawn (RF05, RF08)
+    // No modo online também continuam nascendo monstros para os jogadores evoluírem.
+    this.spawn.update(delta);
 
     // Cronômetro (RF13)
     this.events.emit('survivalTime', this.spawn.getElapsedSeconds());
@@ -1399,7 +1404,13 @@ export class GameScene extends Phaser.Scene {
     // Estado da sala
     this.roomUnsubs.push(listenRoom(code, room => {
       this.roomData = room;
-      if (!room) return;
+
+      if (!room) {
+        this.handleRoyalePlayerLeft('A sala foi encerrada. Voltando ao menu...');
+        return;
+      }
+
+      this.lastKnownMaxPlayers = room.maxPlayers ?? this.lastKnownMaxPlayers;
 
       if (room.status === 'finished' && !this.finishedHandled) {
         this.finishedHandled = true;
@@ -1412,6 +1423,12 @@ export class GameScene extends Phaser.Scene {
     // Estado dos outros jogadores
     this.roomUnsubs.push(listenPlayers(code, players => {
       this.roomPlayers = players;
+
+      if (this.shouldCancelRoyaleBecausePlayerLeft(players)) {
+        this.handleRoyalePlayerLeft('Um jogador saiu da sala. Voltando ao menu...');
+        return;
+      }
+
       this.syncRemoteSprites(players);
       this.checkVictory(players);
     }));
@@ -1429,6 +1446,47 @@ export class GameScene extends Phaser.Scene {
       this.roomUnsubs.forEach(u => u());
       this.roomUnsubs = [];
       void leaveRoom();
+    });
+  }
+
+  private shouldCancelRoyaleBecausePlayerLeft(players: RoomPlayer[]): boolean {
+    if (!this.royale || this.royaleExitHandled || this.finishedHandled) return false;
+
+    const room = this.roomData;
+    if (!room) return false;
+    if (room.status !== 'prep' && room.status !== 'arena') return false;
+
+    const myId = auth.currentUser?.uid;
+    if (!myId) return false;
+
+    // Se eu mesmo já não estou mais na lista, provavelmente estou saindo da cena.
+    // Nesse caso não precisa disparar mensagem para mim.
+    const iAmStillInRoom = players.some(p => p.uid === myId);
+    if (!iAmStillInRoom) return false;
+
+    const maxPlayers = room.maxPlayers ?? this.lastKnownMaxPlayers ?? players.length;
+    if (maxPlayers < 2) return false;
+
+    return players.length < maxPlayers;
+  }
+
+  private handleRoyalePlayerLeft(message: string): void {
+    if (this.royaleExitHandled) return;
+
+    this.royaleExitHandled = true;
+    this.finishedHandled = true;
+    this.gameOver = true;
+
+    this.events.emit('waveMessage', `⚠ ${message}`);
+
+    this.roomUnsubs.forEach(u => u());
+    this.roomUnsubs = [];
+
+    void leaveRoom();
+
+    this.time.delayedCall(1200, () => {
+      this.scene.stop('HUD');
+      this.scene.start('Menu');
     });
   }
 
@@ -1524,6 +1582,10 @@ export class GameScene extends Phaser.Scene {
         (s.body as Phaser.Physics.Arcade.Body).stop();
       }),
     );
+
+    // Reinicia a contagem de ondas para a arena online começar equilibrada,
+    // mas mantendo monstros ativos durante a batalha.
+    this.spawn.setElapsed(0);
 
     // Posição de largada: espalhados pela borda do primeiro círculo
     const uids = this.roomPlayers.map(p => p.uid).sort();

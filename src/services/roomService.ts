@@ -229,6 +229,14 @@ async function joinRoomDoc(code: string, charId: string, playerName?: string): P
   currentCode = code;
 }
 
+async function deleteRoomCompletely(code: string): Promise<void> {
+  const roomRef = doc(db, 'rooms', code);
+  const players = await getDocs(collection(db, 'rooms', code, 'players'));
+
+  await Promise.all(players.docs.map(playerDoc => deleteDoc(playerDoc.ref)));
+  await deleteDoc(roomRef);
+}
+
 export async function leaveRoom(): Promise<void> {
   if (!currentCode) return;
 
@@ -240,13 +248,25 @@ export async function leaveRoom(): Promise<void> {
     const roomRef = doc(db, 'rooms', code);
     const snap = await getDoc(roomRef);
 
+    if (!snap.exists()) return;
+
+    const room = snap.data();
+    const maxPlayers = normalizeMaxPlayers(room.maxPlayers ?? 2);
+
     await deleteDoc(doc(db, 'rooms', code, 'players', uid));
 
+    const playersAfterLeave = await getDocs(collection(db, 'rooms', code, 'players'));
+
+    // Se era uma sala de 2 pessoas e alguém saiu, encerra a sala para todos.
+    // Assim quem ficou recebe room=null no listener e volta para a área inicial.
+    if (maxPlayers === 2 && playersAfterLeave.size < 2) {
+      await deleteRoomCompletely(code);
+      return;
+    }
+
     // Líder saindo de sala em espera → desfaz a sala.
-    if (snap.exists() && snap.data().hostUid === uid && snap.data().status === 'waiting') {
-      const players = await getDocs(collection(db, 'rooms', code, 'players'));
-      await Promise.all(players.docs.map(p => deleteDoc(p.ref)));
-      await deleteDoc(roomRef);
+    if (room.hostUid === uid && room.status === 'waiting') {
+      await deleteRoomCompletely(code);
     }
   } catch (error) {
     console.error('Erro ao sair da sala:', error);
