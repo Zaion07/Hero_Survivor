@@ -6,7 +6,7 @@ Jogo web 2D de sobrevivência feito com **Phaser**, **TypeScript** e **Firebase*
 
 Acesse o jogo aqui:
 
-https://hero-suvivor.vercel.app
+https://heroes-survivor.vercel.app
 
 ## 🕹️ Sobre o jogo
 
