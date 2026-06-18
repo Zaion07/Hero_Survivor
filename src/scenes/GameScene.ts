@@ -50,7 +50,6 @@ const BUFF_MS        = 10000;
 // ── Battle Royale ──
 const SYNC_INTERVAL_MS    = 250;
 const ZONE_TICK_MS        = 600;
-const CONTACT_PVP_DMG     = 12;
 const CONTACT_PVP_CD_MS   = 600;
 
 // =============================================================
@@ -69,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   private enemyHpGfx!:     Phaser.GameObjects.Graphics;
   private shieldGfx!:      Phaser.GameObjects.Graphics;
   private characterId      = 'KNIGHT';
+  private worldSize        = CFG.WORLD;
   private levelUpPending   = false;
   private gameOver         = false;
   private dashHit          = new Set<Enemy>();
@@ -95,6 +95,7 @@ export class GameScene extends Phaser.Scene {
   private outsideOverlay?:  Phaser.GameObjects.Rectangle;
   private lastContactHit   = new Map<string, number>();
   private lastDamageFrom: { uid: string; name: string } | null = null;
+  private pingStop?:       () => void;
 
   // ── Buraco Negro (suprema do Arcanista) ──
   private blackHole: { x: number; y: number; until: number; tick: number } | null = null;
@@ -112,6 +113,7 @@ export class GameScene extends Phaser.Scene {
     this.royale      = !!data?.royale && !!getCurrentRoomCode();
     this.roomCode    = this.royale ? getCurrentRoomCode() : null;
     this.resumeData  = !this.royale ? (data?.resume ?? null) : null;
+    this.worldSize   = this.royale ? CFG.ROYALE.WORLD : CFG.WORLD;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -140,7 +142,7 @@ export class GameScene extends Phaser.Scene {
     Sfx.unlock(this);
     Sfx.startDungeonBgm(this);
 
-    const W = CFG.WORLD;
+    const W = this.worldSize;
 
     this.physics.world.setBounds(0, 0, W, W);
 
@@ -202,6 +204,7 @@ export class GameScene extends Phaser.Scene {
 
     // ── Sistema de spawn ──────────────────────────────────
     this.spawn = new SpawnSystem(this, this.enemyGroup, this.cameras.main);
+    this.spawn.setWorldSize(this.worldSize);
 
     // ── HUD paralelo ──────────────────────────────────────
     this.scene.launch('HUD');
@@ -1371,7 +1374,9 @@ export class GameScene extends Phaser.Scene {
         if (!p.active || !r.active || !this.arenaActive) return;
 
         const uid = r.getData('uid') as string;
-        const dmg = Math.round((p.getData('damage') as number) ?? 10);
+        // Dano entre jogadores é muito menor que contra monstros (PvP equilibrado)
+        const rawDmg = (p.getData('damage') as number) ?? 10;
+        const dmg = Math.max(1, Math.round(rawDmg * CFG.ROYALE.PVP_DMG_MULT));
         void sendHit(code, uid, dmg);
         floatingText(this, r.x, r.y - 20, `-${dmg}`, '#ff8866', 12);
 
@@ -1397,7 +1402,7 @@ export class GameScene extends Phaser.Scene {
         const last = this.lastContactHit.get(uid) ?? -Infinity;
         if (now - last < CONTACT_PVP_CD_MS) return;
         this.lastContactHit.set(uid, now);
-        void sendHit(code, uid, CONTACT_PVP_DMG);
+        void sendHit(code, uid, CFG.ROYALE.CONTACT_DMG);
       },
     );
 
@@ -1441,8 +1446,17 @@ export class GameScene extends Phaser.Scene {
       this.player.applyTrueDamage(hit.dmg);
     }));
 
+    // Medidor de ping — carregado sob demanda para que a conexão
+    // socket.io só abra no modo online (e não no solo).
+    void import('../services/pingService').then(({ startPingMonitor }) => {
+      if (this.gameOver) return; // cena já encerrou enquanto carregava
+      this.pingStop = startPingMonitor(ms => this.events.emit('pingUpdate', ms));
+    });
+
     // Limpeza ao sair da cena
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.pingStop?.();
+      this.pingStop = undefined;
       this.roomUnsubs.forEach(u => u());
       this.roomUnsubs = [];
       void leaveRoom();
@@ -1551,7 +1565,7 @@ export class GameScene extends Phaser.Scene {
 
     this.events.emit('royalePhase', 'arena', 0, this.countAlive());
     this.events.emit('minimapState', {
-      world: CFG.WORLD,
+      world: this.worldSize,
       me: { x: this.player.x, y: this.player.y, alive: this.player.alive },
       others: this.roomPlayers
         .filter(p => p.uid !== auth.currentUser?.uid && p.alive)
@@ -1591,12 +1605,16 @@ export class GameScene extends Phaser.Scene {
     const uids = this.roomPlayers.map(p => p.uid).sort();
     const idx  = Math.max(0, uids.indexOf(auth.currentUser?.uid ?? ''));
     const total = Math.max(1, uids.length);
-    const z0 = room.zones[0] ?? { x: CFG.WORLD / 2, y: CFG.WORLD / 2, r: CFG.WORLD * 0.5, t: 0 };
+    const z0 = room.zones[0] ?? { x: this.worldSize / 2, y: this.worldSize / 2, r: this.worldSize * 0.5, t: 0 };
     const angle = (idx / total) * Math.PI * 2;
     const px = z0.x + Math.cos(angle) * z0.r * 0.5;
     const py = z0.y + Math.sin(angle) * z0.r * 0.5;
 
     (this.player.body as Phaser.Physics.Arcade.Body).reset(px, py);
+
+    // Bônus de HP só na arena: como o dano PvP é baixo, dá fôlego para
+    // a batalha durar (e não morrer em poucos tiros com 100 de vida).
+    this.player.stats.maxHp = Math.round(this.player.stats.maxHp * CFG.ROYALE.ARENA_HP_BONUS);
     this.player.heal(this.player.stats.maxHp);
 
     Sfx.specialSpawn(this, 'boss', 'BOSS');
@@ -1644,7 +1662,7 @@ export class GameScene extends Phaser.Scene {
     if (this.zoneTickTimer <= 0) {
       this.zoneTickTimer = ZONE_TICK_MS;
       // Quanto menor a zona, maior o dano
-      const dmg = 3 + Math.floor((CFG.WORLD * 0.7 - current.r) / 400);
+      const dmg = 3 + Math.floor((this.worldSize * 0.7 - current.r) / 400);
       this.lastDamageFrom = null; // morte pela zona não dá kill
       this.player.applyTrueDamage(dmg);
       floatingText(this, this.player.x, this.player.y - 24, `-${dmg} ☠`, '#ff4444', 12);
@@ -1662,7 +1680,10 @@ export class GameScene extends Phaser.Scene {
     this.auraPvpTimer = aura.cooldownMs;
 
     const radius = aura.getRadius();
-    const dmg = Math.round(aura.damage * this.player.stats.damageMult);
+    const dmg = Math.max(
+      1,
+      Math.round(aura.damage * this.player.stats.damageMult * CFG.ROYALE.PVP_DMG_MULT),
+    );
 
     this.remoteSprites.forEach((sprite, uid) => {
       if (!sprite.visible) return;

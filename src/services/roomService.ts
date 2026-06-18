@@ -385,10 +385,10 @@ export function awardKill(code: string, killerUid: string): void {
 // ── Geração das zonas (executada pelo líder) ───────────────
 
 export function generateZones(): ZoneKeyframe[] {
-  const W = CFG.WORLD;
-  const HOLD = 18;
-  const SHRINK = 22;
-  const STAGES = 5;
+  const W = CFG.ROYALE.WORLD;
+  const HOLD = 20;   // tempo parado antes de cada fechamento
+  const SHRINK = 26; // tempo encolhendo (mapa maior → mais tempo para chegar)
+  const STAGES = 6;
 
   const zones: ZoneKeyframe[] = [];
 
@@ -439,9 +439,9 @@ export function getZoneAt(
 ): { current: ZoneKeyframe; target: ZoneKeyframe | null } {
   if (zones.length === 0) {
     const c = {
-      x: CFG.WORLD / 2,
-      y: CFG.WORLD / 2,
-      r: CFG.WORLD,
+      x: CFG.ROYALE.WORLD / 2,
+      y: CFG.ROYALE.WORLD / 2,
+      r: CFG.ROYALE.WORLD,
       t: 0,
     };
 

@@ -94,6 +94,14 @@ export const CFG = {
   // ── Mundo ─────────────────────────────────────────────────
   WORLD: 5000,
 
+  // ── Battle Royale (modo online) ───────────────────────────
+  ROYALE: {
+    WORLD:         8000,  // mapa bem maior que o solo (mais espaço para fugir)
+    PVP_DMG_MULT:  0.25,  // dano entre jogadores = 25% do dano contra monstros
+    CONTACT_DMG:   6,     // dano de encostar em outro jogador (corpo a corpo)
+    ARENA_HP_BONUS: 1.5,  // +50% de HP máximo ao abrir a arena (lutas mais longas)
+  },
+
   // ── Jogador (RF01, RF03.1) ────────────────────────────────
   PLAYER: {
     SPEED:          180,

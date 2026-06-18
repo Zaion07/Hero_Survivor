@@ -38,6 +38,7 @@ export class HUDScene extends Phaser.Scene {
   private itemIcons = new Map<string, { txt: Phaser.GameObjects.Text; img: Phaser.GameObjects.Image }>();
   private itemsLabel?: Phaser.GameObjects.Text;
   private royaleText?: Phaser.GameObjects.Text;
+  private pingText?: Phaser.GameObjects.Text;
   private minimapGfx?: Phaser.GameObjects.Graphics;
   private minimapBg?: Phaser.GameObjects.Graphics;
   private royaleEndGrp?: Phaser.GameObjects.Container;
@@ -52,6 +53,7 @@ export class HUDScene extends Phaser.Scene {
     this.itemIcons = new Map();
     this.itemsLabel = undefined;
     this.royaleText = undefined;
+    this.pingText = undefined;
     this.minimapGfx = undefined;
     this.minimapBg = undefined;
     this.royaleEndGrp = undefined;
@@ -205,6 +207,10 @@ export class HUDScene extends Phaser.Scene {
       this.drawMinimap(state),
     );
 
+    game.events.on('pingUpdate', (ms: number | null) =>
+      this.updatePing(ms),
+    );
+
     game.events.on('royaleFinished', (won: boolean, winnerName: string) =>
       this.showRoyaleEnd(won, winnerName),
     );
@@ -277,6 +283,28 @@ export class HUDScene extends Phaser.Scene {
       this.royaleText.setText(`⚔ ARENA — VIVOS: ${alive}`);
       this.royaleText.setColor('#ffd700');
     }
+  }
+
+  // ── Battle Royale: indicador de ping (latência) ───────────
+  private updatePing(ms: number | null): void {
+    if (!this.pingText) {
+      this.pingText = this.add.text(CFG.WIDTH / 2, 78, '', {
+        fontSize: '11px',
+        color: '#88ddaa',
+        fontFamily: 'Cinzel, Georgia, serif',
+        stroke: '#000',
+        strokeThickness: 3,
+      }).setOrigin(0.5, 0).setDepth(40);
+    }
+
+    if (ms === null) {
+      this.pingText.setText('📶 PING: --').setColor('#999999');
+      return;
+    }
+
+    // Verde (bom) → amarelo (médio) → vermelho (ruim)
+    const color = ms < 80 ? '#66dd88' : ms < 160 ? '#ddcc55' : '#ff6655';
+    this.pingText.setText(`📶 PING: ${ms} ms`).setColor(color);
   }
 
   // ── Battle Royale: minimapa (zona atual e próxima) ────────

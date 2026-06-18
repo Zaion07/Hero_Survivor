@@ -58,6 +58,11 @@ app.get("/", (req, res) => {
 io.on("connection", (socket) => {
   console.log("Jogador conectado:", socket.id);
 
+  // Echo de ping: responde imediatamente para o cliente medir a latência (RTT).
+  socket.on("pingCheck", (callback) => {
+    if (typeof callback === "function") callback();
+  });
+
   socket.on("createRoom", ({ playerName, character, maxPlayers }, callback) => {
     const selectedMaxPlayers = Number(maxPlayers);
 

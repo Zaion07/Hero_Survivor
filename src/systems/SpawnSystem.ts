@@ -32,6 +32,7 @@ export class SpawnSystem {
   private camera:     Phaser.Cameras.Scene2D.Camera;
 
   private elapsed    = 0;
+  private worldSize  = CFG.WORLD; // sobrescrito no Battle Royale (mapa maior)
   private spawnTimer = 0;
   private waveIndex  = -1;
   private currentWave!: WaveDef;
@@ -333,7 +334,7 @@ export class SpawnSystem {
   private randomOutsideViewport(): { x: number; y: number } {
     const cam    = this.camera;
     const margin = CFG.SPAWN_MARGIN;
-    const world  = CFG.WORLD;
+    const world  = this.worldSize;
 
     const side = Phaser.Math.Between(0, 3);
     let x: number, y: number;
@@ -374,4 +375,7 @@ export class SpawnSystem {
   }
 
   getElapsedSeconds(): number { return this.elapsed; }
+
+  /** Define o tamanho do mundo (usado para o mapa maior do Battle Royale). */
+  setWorldSize(size: number): void { this.worldSize = size; }
 }
