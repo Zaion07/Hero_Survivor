@@ -594,6 +594,9 @@ export class GameScene extends Phaser.Scene {
               }
             });
 
+            // PvP: também fere jogadores próximos ao impacto
+            this.dealPvpAreaDamage(tx, ty, 95, 95 * mult);
+
             this.tweens.add({
               targets: sword,
               alpha: 0,
@@ -735,6 +738,9 @@ export class GameScene extends Phaser.Scene {
         }
       });
 
+      // PvP: a implosão também fere jogadores dentro do raio
+      this.dealPvpAreaDamage(x, y, 300, 120 * mult);
+
       this.tweens.add({
         targets: [core, glow],
         scale: 0,
@@ -773,6 +779,9 @@ export class GameScene extends Phaser.Scene {
         e.takeDamage(18, mult);
       }
     });
+
+    // PvP: jogadores perto do núcleo também tomam dano por tick
+    if (doDamage) this.dealPvpAreaDamage(bh.x, bh.y, 130, 18 * mult);
   }
 
   // Dano do Dash Sombrio nv.2+ enquanto atravessa inimigos
@@ -1688,6 +1697,23 @@ export class GameScene extends Phaser.Scene {
     this.remoteSprites.forEach((sprite, uid) => {
       if (!sprite.visible) return;
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, sprite.x, sprite.y);
+      if (dist <= radius + 16) {
+        void sendHit(this.roomCode!, uid, dmg);
+        floatingText(this, sprite.x, sprite.y - 20, `-${dmg}`, '#ff8866', 12);
+      }
+    });
+  }
+
+  // ── Dano de área das supremas contra outros jogadores (PvP) ─
+  // Mesmo multiplicador de PvP das armas, para manter equilibrado.
+  private dealPvpAreaDamage(x: number, y: number, radius: number, rawDmg: number): void {
+    if (!this.arenaActive || !this.roomCode) return;
+
+    const dmg = Math.max(1, Math.round(rawDmg * CFG.ROYALE.PVP_DMG_MULT));
+
+    this.remoteSprites.forEach((sprite, uid) => {
+      if (!sprite.visible) return;
+      const dist = Phaser.Math.Distance.Between(x, y, sprite.x, sprite.y);
       if (dist <= radius + 16) {
         void sendHit(this.roomCode!, uid, dmg);
         floatingText(this, sprite.x, sprite.y - 20, `-${dmg}`, '#ff8866', 12);

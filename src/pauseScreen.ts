@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { logoutUser } from './services/authService';
 import { getCurrentScore } from './services/scoreService';
 import { saveGame, GameSave } from './services/saveService';
 import { Sfx } from './utils/Sfx';
@@ -16,17 +15,11 @@ export function setupPauseScreen(game: Phaser.Game): void {
   saveButton = document.getElementById('pause-save-button') as HTMLButtonElement;
 
   const resumeButton = document.getElementById('resume-button') as HTMLButtonElement;
-  const logoutButton = document.getElementById('pause-logout-button') as HTMLButtonElement;
 
   updateMusicButtonText();
 
   resumeButton.addEventListener('click', () => {
     resumeGame(game);
-  });
-
-  logoutButton.addEventListener('click', async () => {
-    await logoutUser();
-    window.location.reload();
   });
 
   saveButton?.addEventListener('click', async () => {

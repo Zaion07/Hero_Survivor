@@ -97,6 +97,11 @@ export abstract class Weapon {
     p.setAngularVelocity(0);
     p.setData('pierce', 0);
 
+    // Nova "geração": invalida timers de expiração de usos anteriores
+    // deste mesmo sprite (pool compartilhado) — evita que um disparo
+    // antigo desative o projétil novo no meio do voo.
+    p.setData('gen', ((p.getData('gen') as number) ?? 0) + 1);
+
     const body = p.body as Phaser.Physics.Arcade.Body;
     body.reset(x, y);
     body.setSize(p.width, p.height, true);
@@ -108,8 +113,10 @@ export abstract class Weapon {
 
   /** Desativa o projétil após `ms` (vida útil). */
   protected expireProjectile(p: Phaser.Physics.Arcade.Sprite, ms: number): void {
+    const gen = p.getData('gen') as number;
     this.scene.time.delayedCall(ms, () => {
-      if (p.active) {
+      // Só expira se ainda for o mesmo disparo (não foi reciclado pelo pool)
+      if (p.active && p.getData('gen') === gen) {
         p.setActive(false).setVisible(false);
         (p.body as Phaser.Physics.Arcade.Body).stop();
       }

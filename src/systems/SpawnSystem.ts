@@ -139,6 +139,9 @@ export class SpawnSystem {
       enemy = Enemy.spawn(this.scene, this.group, type, x, y);
     }
     if (enemy) {
+      // Dificuldade crescente: mais vida conforme o tempo passa
+      enemy.applyHpScale(this.hpScaleMult());
+
       CollectionTracker.addMonster(type);
 
       // Variante elite dourada (somente inimigos normais)
@@ -378,4 +381,15 @@ export class SpawnSystem {
 
   /** Define o tamanho do mundo (usado para o mapa maior do Battle Royale). */
   setWorldSize(size: number): void { this.worldSize = size; }
+
+  /** Multiplicador de vida dos inimigos pela duração da partida. */
+  private hpScaleMult(): number {
+    const s = CFG.SCALING;
+    const minutes = this.elapsed / 60;
+    if (minutes < s.HP_START_MIN) return 1;
+
+    const steps = Math.floor((minutes - s.HP_START_MIN) / s.HP_STEP_MIN);
+    const mult  = s.HP_START_MULT * Math.pow(s.HP_STEP_MULT, steps);
+    return Math.min(s.HP_MAX_MULT, mult);
+  }
 }

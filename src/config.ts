@@ -112,6 +112,18 @@ export const CFG = {
     INVULN_MS:        600, // janela de invulnerabilidade após levar dano
   },
 
+  // ── Escalonamento de dificuldade ao longo do tempo ────────
+  // A vida dos inimigos só começa a crescer a partir de HP_START_MIN
+  // (em HP_START_MULT). Depois, a cada HP_STEP_MIN minutos, é
+  // multiplicada por HP_STEP_MULT (crescimento composto).
+  SCALING: {
+    HP_START_MIN:  3,    // minuto em que a vida começa a crescer
+    HP_START_MULT: 2,    // multiplicador inicial (2x aos 3 min)
+    HP_STEP_MIN:   1.5,  // a cada 1,5 minuto depois disso...
+    HP_STEP_MULT:  1.5,  // ...multiplica a vida por 1,5x
+    HP_MAX_MULT:   12,   // teto de segurança (partidas muito longas)
+  },
+
   // ── XP necessário para avançar de nível (RF09) ────────────
   XP_TABLE: [20, 50, 95, 155, 230, 320, 425, 545, 680, 830],
 

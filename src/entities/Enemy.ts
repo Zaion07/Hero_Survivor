@@ -86,6 +86,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     return e;
   }
 
+  /**
+   * Escala a vida com o tempo de partida (dificuldade crescente).
+   * Aplicado no spawn, antes da variante elite.
+   */
+  applyHpScale(mult: number): void {
+    if (mult <= 1) return;
+    this.hp    = Math.round(this.typeDef.hp * mult);
+    this.maxHp = this.hp;
+  }
+
   // ── Variante elite: dourada, mais forte, dropa item ───────
   makeElite(): void {
     this.isElite   = true;
